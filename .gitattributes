@@ -1,0 +1,21 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+*.png binary
+*.gif binary
+*.bmp binary
+*.blend binary
+*.bin binary
+*.grf binary
+*.fnt binary
+*.pal binary
+*.img binary
+*.map binary
+*.dsm binary
+*.dsa binary
+*.raw binary
+*.wav binary
+*.xm binary
+*.mod binary
+*.it binary
