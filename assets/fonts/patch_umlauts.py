@@ -11,6 +11,7 @@ DST = ROOT / "nitrofiles" / "fnt" / "default.fnt"
 
 TILE = 8
 FIRST_CHAR = 32
+USED_GLYPHS = 128
 
 SLOT_AE_LOWER = 105  # á
 SLOT_OE_LOWER = 108  # ó
@@ -106,7 +107,8 @@ def main():
         write_glyph(font, slot, parse(rows))
 
     DST.parent.mkdir(parents=True, exist_ok=True)
-    DST.write_bytes(font)
+    # Only the first 128 glyphs are used (NFLib reads 127, the font texture 128).
+    DST.write_bytes(font[:USED_GLYPHS * TILE * TILE])
 
     for name, slot in [("ä", SLOT_AE_LOWER), ("ö", SLOT_OE_LOWER), ("ü", SLOT_UE_LOWER),
                        ("Ä", SLOT_AE_UPPER), ("Ö", SLOT_OE_UPPER), ("Ü", SLOT_UE_UPPER),

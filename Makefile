@@ -38,6 +38,19 @@ NITROFSDIR	:= nitrofiles
 
 DEFINES		:=
 
+# Debug build by default (debug HUD and keys). Release: make RELEASE=1
+# (run "make clean" when switching, objects are not rebuilt automatically).
+RELEASE		?= 0
+ifeq ($(RELEASE),1)
+    DEFINES	+= -DNDEBUG
+else
+    DEFINES	+= -DWALDWEG_DEBUG
+endif
+BOOT_ENDING	?= 0
+ifeq ($(BOOT_ENDING),1)
+    DEFINES	+= -DWALDWEG_BOOT_ENDING
+endif
+
 # Libraries
 # ---------
 
@@ -175,7 +188,7 @@ ifneq ($(SOURCES_AUDIO),)
     NDSTOOL_ARGS	+= -d $(SOUNDBANKDIR)
 endif
 
-$(ROM): $(NITROFSDIR)
+$(ROM): $(NITROFSDIR) $(shell find $(NITROFSDIR) -type f)
 endif
 
 ifeq ($(strip $(GAME_SUBTITLE)),)

@@ -33,38 +33,58 @@ char MapCodepoint(u32 cp)
 
 } // namespace
 
+u32 TextDE_NextCodepoint(const char *&utf8)
+{
+    const unsigned char *p = reinterpret_cast<const unsigned char *>(utf8);
+    u32 cp;
+    if (p[0] < 0x80)
+    {
+        cp = p[0];
+        p += 1;
+    }
+    else if ((p[0] & 0xE0) == 0xC0 && p[1] != 0)
+    {
+        cp = ((p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+        p += 2;
+    }
+    else if ((p[0] & 0xF0) == 0xE0 && p[1] != 0 && p[2] != 0)
+    {
+        cp = ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+        p += 3;
+    }
+    else
+    {
+        cp = '?';
+        p += 1;
+    }
+    utf8 = reinterpret_cast<const char *>(p);
+    return cp;
+}
+
+u32 TextDE_FontSlot(u32 codepoint)
+{
+    unsigned char c = static_cast<unsigned char>(MapCodepoint(codepoint));
+    switch (c)
+    {
+        case 225: return 105; // ä
+        case 243: return 108; // ö
+        case 252: return 111; // ü
+        case 193: return 100; // Ä
+        case 211: return 103; // Ö
+        case 218: return 104; // Ü
+        case 239: return 110; // ß
+        default:
+            return (c >= 32 && c < 128) ? c - 32u : '?' - 32u;
+    }
+}
+
 void TextDE_Write(int screen, u32 layer, u32 x, u32 y, const char *utf8)
 {
     char buffer[256];
     u32 out = 0;
-    const unsigned char *p = reinterpret_cast<const unsigned char *>(utf8);
 
-    while (*p != 0 && out < sizeof(buffer) - 1)
-    {
-        u32 cp;
-        if (p[0] < 0x80)
-        {
-            cp = p[0];
-            p += 1;
-        }
-        else if ((p[0] & 0xE0) == 0xC0 && p[1] != 0)
-        {
-            cp = ((p[0] & 0x1F) << 6) | (p[1] & 0x3F);
-            p += 2;
-        }
-        else if ((p[0] & 0xF0) == 0xE0 && p[1] != 0 && p[2] != 0)
-        {
-            cp = ((p[0] & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
-            p += 3;
-        }
-        else
-        {
-            cp = '?';
-            p += 1;
-        }
-
-        buffer[out++] = MapCodepoint(cp);
-    }
+    while (*utf8 != 0 && out < sizeof(buffer) - 1)
+        buffer[out++] = MapCodepoint(TextDE_NextCodepoint(utf8));
 
     buffer[out] = '\0';
     NF_WriteText(screen, layer, x, y, buffer);
