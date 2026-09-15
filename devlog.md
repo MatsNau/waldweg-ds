@@ -300,7 +300,8 @@ nitrofiles/                   generierte Spieldaten (models/, textures/, fnt/, u
 - **Stolperfalle:** In PowerShell bricht `... | Select-Object -First N` das Asset-Skript mitten im Lauf ab (Modelle gelöscht, aber nicht neu erzeugt). Ausgabe lieber in eine Logdatei umleiten.
 
 **Offen**
-1. Test durch User: Schlussbild unten (Runde 6), Haare, Schatten, Blätter, Kuhpilz-Position.
+0. **Nächste Sitzung: Sound und Musik** (Tag 6).
+1. Test durch User: Kuh läuft beim Abblenden weiter (Finale), Haare, Schatten, Blätter, Kuhpilz-Position.
 2. Geburtstagsbotschaft, Name der Freundin, Spieltitel.
 
 ## Offene Fragen an den User

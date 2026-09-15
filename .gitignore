@@ -1,6 +1,5 @@
 # Nintendo DS / BlocksDS
 build/
-*.nds
 *.elf
 *.dump
 sdroot/
