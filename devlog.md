@@ -54,11 +54,11 @@ Moderne Klassen-/Service-Struktur (Wunsch des Users): `main.cpp` startet nur die
 Makefile                      BlocksDS (C++17, -Wall -Wextra); Standard = Debug (WALDWEG_DEBUG), Release: make RELEASE=1
 source/main.cpp               nur: static Application → Run()
 source/core/                  Application (Init + Hauptschleife, besitzt alle Services), Services (Referenz-Bündel für DI),
-                              InputService (Tasten, Touch, Laufrichtung inkl. ABXY gespiegelt), Random, Fatal
+                              InputService (Tasten, Touch, Laufrichtung nur Steuerkreuz), Random, Fatal
 source/math/                  Fixed (20.12, _fx-Literal), Vec2 (Bodenebene x/z), Angle (Binärwinkel, atan2, Drehen)
 source/render/                RenderService (NE-Init, Atmosphäre, Nebel, Poly-IDs, Lit/Glow), AssetService (alle Modelle per ModelId, Glow-Material)
 source/content/               Species (7+1 Pilzarten: Name, giftig/essbar, Standort, Anzahl), Items (Korb, Schal, Laterne, Glöckchen)
-source/world/                 TimeOfDayService (6 Keyframes, BlendTo), Forest (Layout, Stümpfe, Kollision, Culling, FindFreeSpot),
+source/world/                 TimeOfDayService (6 Keyframes, BlendTo), Forest (Layout, Stümpfe, Kollision, Culling + Zeichen-Budget, FindFreeSpot),
                               MushroomField (Pilze platzieren, Reichweite), LanternLight (Punktlicht + Lichtscheibe), CameraRig
 source/entities/              CharacterRig (Einzelteile, Animation, Gegenstände in Hand/am Hals), Character, Nina, Mats (Folgen + ShowItem)
 source/game/                  Game (Zustandsautomat, besitzt GameProgress), GameState, ExploreState, GameProgress, StoryDirector (Story-Tore)
@@ -126,7 +126,7 @@ audio/                        generierte WAVs; mmutil packt sie beim Build zur s
 - Nina & Mats als Einzelteile modelliert (Nina ~264 Tris, Mats ~322 Tris), Vorschau in Blender geprüft.
 - Welt: Boden 28×28 Einheiten (200 Tris, ×2 skaliert), Baum 66, Tanne 32, Busch 15, Stein 20, Stumpf 24, Welt-Fliegenpilz 22 Tris.
 - Wald wird beim Start per Seed erzeugt: doppelter Baumrand + zufällige Objekte, Lichtungen am Start (0, 9) und in der Mitte.
-- Nina läuft (Steuerkreuz oder ABXY gespiegelt, Diagonalen normalisiert, Kollision mit Objekten, weiches Drehen).
+- Nina läuft (Steuerkreuz, Diagonalen normalisiert, Kollision mit Objekten, weiches Drehen). *(ABXY-Spiegelung an Tag 7 entfernt.)*
 - Mats folgt Ninas Brotkrumen-Pfad, hält 1,0 Abstand und holt ab 2,6 Abstand schneller auf.
 - Lauf-Animation: Beine/Arme schwingen abhängig von der Strecke, Wippen, Atmen im Stand.
 - Kamera im Wild-World-Stil (feste Blickrichtung nach Norden, weiches Folgen).
@@ -348,6 +348,63 @@ audio/                        generierte WAVs; mmutil packt sie beim Build zur s
 1. **Test durch User: zweiter Durchgang** – Ambience jetzt leiser und dumpfer, Lautstärkeverhältnisse, ob die Schritte zu oft/zu selten kommen, ob Bö und Knarzen zu häufig sind. Falls die Schritte gegen die Beine „schwimmen“: Alternative wäre, die Animation zu verlangsamen (`kStrideLength` 1,1 → ~3,0) – ändert aber das abgenommene Laufbild.
 2. Musik (Stimmung noch offen).
 3. Shroomchen läuft ohne Huftritte; Glockengeläut, Pilz-Einsammeln und Fehler-Blatt haben noch keinen Sound – auf Wunsch nachziehbar.
+
+## Tag 7 – Do 17.09.2026: Bugfixing
+
+**Entscheidung mit dem User:** Sound ist „noch nicht sitzend", wird aber später manuell nachgezogen. Fokus jetzt auf Bugfixing.
+
+### Textbox verschwand einfach (behoben)
+**Ursache 1 – „gleicher Moment" war nicht derselbe Frame.** `DialogBox::Say` gruppierte Nachrichten über `stamp == frame_`, aber `frame_` wurde mitten in `ExploreState::Update` hochgezählt (in `dialog_.Update`). Alles, was *vorher* im selben Spielframe sprach (`backpack_.Update` → `OnItemGiven`, `HandleMapTouch` → Schrein/Pilz, `Enter` → `ApplyIdentifyResult`), bekam einen anderen Stempel als alles *danach* (`story_.Update`, `OnNearShrine`). Zwei Sätze aus derselben Szene galten damit als „alt" und „neu".
+
+**Ursache 2 – die Folgen davon waren zu hart.** Eine „neue" Nachricht hat (a) *alle* wartenden Nachricht mit anderem Stempel **ersatzlos gelöscht** und (b) die laufende auf `kMinShownFrames` = 45 Frames (0,75 s) gekürzt. Typischer Fall: Nina läuft am Schrein vorbei (zwei Sätze in der Warteschlange), tippt einen Pilz an → Ninas zweiter Satz war weg und Mats' Schreinsatz nach 0,75 s auch.
+
+**Neue Regel in `DialogBox`** (Stempel-Vergleich komplett raus):
+- Reine FIFO-Warteschlange, es wird **nichts mehr still verworfen**. Nur zwei Ventile: Überlauf (7. Nachricht in einem Schwall → die älteste *wartende* fällt raus, die laufende bleibt) und `kStaleFrames` = 900 (eine Nachricht, die 15 s gewartet hat, gehört nicht mehr zur Szene).
+- **Jede Nachricht bleibt mindestens `kMinShownFrames` = 60 Frames (1 s) stehen** – egal was dazwischenkommt, egal ob geskippt wird.
+- Warten andere Nachrichten, wird die laufende auf höchstens `kQueuedReadingFrames` = 180 Frames (3 s) gekürzt statt auf 0,75 s. Ohne Wartende gilt weiter die volle Lesezeit (90 + 3 pro Zeichen, max. jetzt 300 statt 270).
+- Helfer statt Inline-Logik: `StartCurrent`, `ShortenCurrent`, `Advance`, `DropOldestWaiting`, `DropStaleWaiting`.
+
+### Skippen mit A
+- `ExploreState::SkipPressed` – **A** oder (wie bisher) ein Tipp auf die Karte, der nicht schon von einem Pilz/Schrein verbraucht wurde. Gilt auch während des Finales.
+- `kSkipGraceFrames` = 30: in der ersten halben Sekunde lässt sich eine Box nicht wegdrücken, damit sie nie nur aufblitzt.
+- Aufforderungen (`Ask`) lassen sich nicht skippen – die warten weiter auf die Tat.
+- **Kollision mit dem Laufen (vom User entschieden):** A war seit Tag 2 zugleich „nach rechts laufen" (gespiegelte ABXY-Steuerung, `InputService.cpp::kRightKeys`). Der User hat sich für **A = nur weiterklicken** entschieden, die **ABXY-Spiegelung ist ersatzlos raus** – gelaufen wird nur noch mit dem Steuerkreuz, B/X/Y sind frei. (Im Pilzbuch blättern Y/A weiterhin, dort läuft niemand.)
+
+**Prüfung**
+- Logik 1:1 nach Python übertragen (`scratchpad/sim_dialog.py`) und drei Fälle durchgerechnet: Spielstart (Satz 5 s → Aufforderung bleibt), Ereignis während laufendem Text (3 Sätze je 2,5–3,4 s statt „einer weg, einer 0,75 s"), Schwall von 7 (nur die zweite fällt raus). Kein Host-C++-Compiler vorhanden, deshalb der Umweg über Python.
+- Build ohne Warnungen, melonDS-Screenshot: Startdialog läuft ab, Korb-Aufforderung bleibt stehen.
+- **Merksatz:** Was „im selben Moment" passiert, darf nicht an einem Framezähler hängen, der mitten im Frame weiterzählt.
+
+
+### Textbox flackerte / fehlte ganz – Vertex-RAM war voll (behoben)
+**Befund des User:** „Die Textbox flackert oder taucht gar nicht richtig auf, gefühlt ab dem zweiten Sonnen-State."
+
+**Messung statt Raten.** Debug-HUD um Höchstwerte erweitert (`RenderService::PeakPolygons/PeakVertices`) und einen Wegwerf-Build gebaut, der Nina automatisch im Kreis durch den Wald laufen lässt. Ergebnis nach ~75 s:
+
+| | Polygone | Vertices | Objekte |
+|---|---|---|---|
+| Start-Lichtung, Bernstein | 1654 / 2048 | 5059 / 6144 | 37 |
+| Start-Lichtung, Blaue Stunde (ohne Schatten) | 1352 | 4151 | 37 |
+| **im dichten Wald (Maximum)** | **2037** | **6144 = Limit** | 53 |
+
+**Ursache:** Nicht die Polygone, sondern der **Vertex-RAM** (6144) lief über. Was danach an die Grafikeinheit geht, wird verworfen – und `ExploreState::Draw3D` zeichnet `topText.Draw()` als **Letztes**. Deshalb traf es immer die Textbox, und zwar frameweise wechselnd = Flackern. Der Zusammenhang mit der Tageszeit: Schatten kosten 302 Polygone / 908 Vertices (8 Tris = 24 Vertices pro Schatten, `obj2dl` erzeugt Einzeldreiecke), und bis zum zweiten Sonnenstand ist man von der Lichtung in den dichten Wald gelaufen.
+
+**Fix – hartes Budget im Wald** (`Forest::SelectVisible`): Statt „alles im Sichtfenster" werden nur noch die **`kMaxDrawnProps` = 36 nächsten** Objekte gezeichnet, nach Abstand sortiert (Einfüge-Auswahl, die weiteste fällt raus). Schatten bekommen nur die **18 nächsten** – weiter weg sind sie ohnehin im Nebel. `Draw` und `DrawShadows` teilen sich dieselbe Auswahl (wird pro Kamerastand einmal berechnet).
+
+Ergebnis derselben Messfahrt: **Maximum 1661 Polygone / 5088 Vertices** bei offener Textbox – 19 % bzw. 17 % Luft. Optisch kein Unterschied: an der dichtesten Stelle fehlen die hintersten Bäume, die tief im Nebel stehen.
+
+- **Debug-HUD dauerhaft erweitert:** Zeile 1/2 zeigen jetzt `Poly x/2048 max y` und `Vtx x/6144 max y`. Die Tastenzeile ist dafür weggefallen (SELECT = Zeit, R+SELECT = Nacht mit Ausrüstung, L+SELECT = Schlussbild, START = HUD).
+- **Merksatz:** Beim DS zuerst die **Vertices** prüfen, nicht die Polygone – 6144 ist bei Einzeldreiecken früher erreicht als 2048. Und: Was zuletzt gezeichnet wird, verschwindet zuerst. UI-Overlays gehören deshalb unter ein garantiertes Budget.
+
+### Ⓐ-Symbol an der Textbox
+- Freier Schriftplatz: die NFLib-Schrift hat die Slots 114–127 leer. `assets/fonts/make_font_texture.py` malt dort ein 8×8 „A im Kreis" in den 3D-Schrift-Atlas (`TextDE_SlotButtonA` = 127, nur im Atlas, nicht in `default.fnt`).
+- `TopTextService::ShowSkipHint` zeichnet das Symbol als kleines Schild (Rahmen-Quad + Pergament-Quad + Glyphe) an der **unteren rechten Ecke, unterhalb der letzten Textzeile** (y 48) – es verdeckt also nie Text.
+- `DialogBox::CanSkip()` steuert es: erscheint erst, wenn die Nachricht wirklich überspringbar ist (nach `kSkipGraceFrames` = 30), und **nie bei `Ask`**, denn Aufforderungen warten auf die Tat. Im Emulator geprüft: Symbol beim Startsatz da, bei „Gibst du mir den Korb…?" weg.
+
+**Offen**
+1. Test durch User: Kommen Boxen jetzt vollständig und lange genug? Flackert nichts mehr? Fühlt sich A zum Skippen richtig an, ist das Ⓐ-Symbol groß genug?
+2. Weitere Bugs sammeln.
+3. Sound/Musik später manuell durch den User.
 
 ## Offene Fragen an den User
 - Konsolen-Setup: **Flashcart** (Modell/Konsole noch offen, nicht dringend).

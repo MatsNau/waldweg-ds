@@ -2,10 +2,10 @@
 
 namespace {
 
-constexpr u32 kUpKeys = KEY_UP | KEY_X;
-constexpr u32 kDownKeys = KEY_DOWN | KEY_B;
-constexpr u32 kLeftKeys = KEY_LEFT | KEY_Y;
-constexpr u32 kRightKeys = KEY_RIGHT | KEY_A;
+constexpr u32 kUpKeys = KEY_UP;
+constexpr u32 kDownKeys = KEY_DOWN;
+constexpr u32 kLeftKeys = KEY_LEFT;
+constexpr u32 kRightKeys = KEY_RIGHT;
 
 constexpr Fixed kDiagonal = 0.70710678_fx;
 

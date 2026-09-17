@@ -19,6 +19,21 @@ GLYPHS = 128
 COLUMNS = 16
 TILE = 8
 
+# Slots 114-127 of the NFLib font are empty. The last one holds the "A in a
+# circle" badge that marks a message the player can skip with A (see
+# TextDE_SlotButtonA and TopTextService::Draw).
+BUTTON_A_SLOT = 127
+BUTTON_A = [
+    "..####..",
+    ".#....#.",
+    "#..##..#",
+    "#.#..#.#",
+    "#.####.#",
+    "#.#..#.#",
+    ".#....#.",
+    "..####..",
+]
+
 
 def main():
     target = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "assets" / "build" / "font.png"
@@ -33,6 +48,13 @@ def main():
             for x in range(TILE):
                 if font[slot * TILE * TILE + y * TILE + x]:
                     canvas.set(ox + x, oy + y, "white")
+
+    ox = (BUTTON_A_SLOT % COLUMNS) * TILE
+    oy = (BUTTON_A_SLOT // COLUMNS) * TILE
+    for y, line in enumerate(BUTTON_A):
+        for x, pixel in enumerate(line):
+            if pixel == "#":
+                canvas.set(ox + x, oy + y, "white")
 
     target.parent.mkdir(parents=True, exist_ok=True)
     canvas.save_png(str(target))

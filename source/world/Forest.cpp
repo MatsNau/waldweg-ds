@@ -257,15 +257,50 @@ bool Forest::IsNearCamera(Vec2 position, Vec2 cameraFocus)
     return fx::Abs(position.x - cameraFocus.x) <= halfWidth;
 }
 
+void Forest::SelectVisible(Vec2 cameraFocus) const
+{
+    if (visibleValid_ && visibleFocus_.x.Raw() == cameraFocus.x.Raw() &&
+        visibleFocus_.z.Raw() == cameraFocus.z.Raw())
+        return;
+
+    visibleFocus_ = cameraFocus;
+    visibleValid_ = true;
+    visibleCount_ = 0;
+
+    for (int i = 0; i < propCount_; i++)
+    {
+        const Prop &prop = props_[i];
+        if (!IsNearCamera(prop.position, cameraFocus))
+            continue;
+
+        // Keep the list sorted by distance; the farthest one drops out when full.
+        Fixed distance = (prop.position - cameraFocus).LengthSq();
+        if (visibleCount_ == kMaxDrawnProps && distance >= visibleDistance_[kMaxDrawnProps - 1])
+            continue;
+
+        int slot = visibleCount_ < kMaxDrawnProps ? visibleCount_++ : kMaxDrawnProps - 1;
+        while (slot > 0 && visibleDistance_[slot - 1] > distance)
+        {
+            visibleDistance_[slot] = visibleDistance_[slot - 1];
+            visible_[slot] = visible_[slot - 1];
+            slot--;
+        }
+        visibleDistance_[slot] = distance;
+        visible_[slot] = static_cast<u16>(i);
+    }
+}
+
 void Forest::DrawShadows(const RenderService &render, const ShadowCaster &shadows, Vec2 cameraFocus) const
 {
     if (render.ShadowAlpha() == 0)
         return;
-    for (int i = 0; i < propCount_; i++)
+
+    SelectVisible(cameraFocus);
+    int count = visibleCount_ < kMaxShadowProps ? visibleCount_ : kMaxShadowProps;
+    for (int n = 0; n < count; n++)
     {
-        const Prop &prop = props_[i];
-        if (IsNearCamera(prop.position, cameraFocus))
-            shadows.Draw(render, prop.position, Info(prop.kind).shadowRadius, Info(prop.kind).height);
+        const Prop &prop = props_[visible_[n]];
+        shadows.Draw(render, prop.position, Info(prop.kind).shadowRadius, Info(prop.kind).height);
     }
 }
 
@@ -275,25 +310,18 @@ void Forest::Draw(const RenderService &render, Vec2 cameraFocus) const
     render.BeginPolygons(PolyGroup::Ground);
     NE_ModelDraw(assets_.Model(ModelId::Ground));
 
-    int drawn = 0;
-    for (int i = 0; i < propCount_; i++)
+    SelectVisible(cameraFocus);
+    for (int n = 0; n < visibleCount_; n++)
     {
-        const Prop &prop = props_[i];
-        Fixed ahead = cameraFocus.z - prop.position.z;
-        if (ahead > kCullAhead || ahead < -kCullBehind)
-            continue;
-        Fixed halfWidth = kCullBaseWidth + fx::Max(ahead, 0_fx) * kCullWidening;
-        if (fx::Abs(prop.position.x - cameraFocus.x) > halfWidth)
-            continue;
-
+        int index = visible_[n];
+        const Prop &prop = props_[index];
         NE_Model *model = assets_.Model(Info(prop.kind).model);
         NE_ModelSetCoordI(model, prop.position.x.Raw(), 0, prop.position.z.Raw());
         NE_ModelSetRot(model, 0, prop.rotation, 0);
         render.LightObject(prop.position);
         // Neighbouring props get different IDs so overlapping trees keep their outlines.
-        render.BeginPolygons(PolyGroup::Forest, static_cast<u32>(i));
+        render.BeginPolygons(PolyGroup::Forest, static_cast<u32>(index));
         NE_ModelDraw(model);
-        drawn++;
     }
-    lastDrawnProps_ = drawn;
+    lastDrawnProps_ = visibleCount_;
 }

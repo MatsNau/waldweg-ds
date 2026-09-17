@@ -123,6 +123,10 @@ public:
                 // sampled here, right before the engine flushes the frame.
                 f->self->polygonCount_ = NE_GetPolygonCount();
                 f->self->vertexCount_ = NE_GetVertexCount();
+                if (f->self->polygonCount_ > f->self->peakPolygons_)
+                    f->self->peakPolygons_ = f->self->polygonCount_;
+                if (f->self->vertexCount_ > f->self->peakVertices_)
+                    f->self->peakVertices_ = f->self->vertexCount_;
             },
             &frame);
     }
@@ -130,6 +134,13 @@ public:
     // Polygons / vertices of the last rendered frame (limits 2048 / 6144).
     int PolygonCount() const { return polygonCount_; }
     int VertexCount() const { return vertexCount_; }
+    // Highest counts seen since the ROM started. The DS drops everything that
+    // is submitted after polygon or vertex RAM is full - and the dialog panel
+    // is drawn last, so these are the numbers to watch.
+    int PeakPolygons() const { return peakPolygons_; }
+    int PeakVertices() const { return peakVertices_; }
+    static constexpr int kMaxPolygons = 2048;
+    static constexpr int kMaxVertices = 6144;
 
 private:
     void ApplyFog();
@@ -144,6 +155,8 @@ private:
     int fogOverride_ = -1;
     const Haze *haze_ = nullptr;
     const PointLight *pointLight_ = nullptr;
+    int peakPolygons_ = 0;
+    int peakVertices_ = 0;
     int polygonCount_ = 0;
     int vertexCount_ = 0;
 };

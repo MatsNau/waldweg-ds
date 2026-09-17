@@ -138,8 +138,7 @@ void ExploreState::Update()
     if (finale_.IsActive())
     {
         // Cutscene: no walking, tapping or handing over items.
-        bool skip = input.IsPressed(Button::Touch) && ui::kMapArea.Contains(input.TouchX(), input.TouchY());
-        dialog_.Update(skip);
+        dialog_.Update(SkipPressed(false));
         finale_.Update(nina_, mats_, camera_, services_.render);
     }
     else
@@ -151,9 +150,7 @@ void ExploreState::Update()
 
         // A tap on the map that doesn't hit a mushroom skips the current message.
         bool tapUsed = !backpack_.IsDragging() && !restarting_ && HandleMapTouch();
-        bool skip = !tapUsed && input.IsPressed(Button::Touch) &&
-                    ui::kMapArea.Contains(input.TouchX(), input.TouchY());
-        dialog_.Update(skip);
+        dialog_.Update(SkipPressed(tapUsed));
 
         nina_.Update(input, forest_);
         mats_.Update(nina_, forest_);
@@ -183,6 +180,18 @@ void ExploreState::Update()
     backpack_.SetMatsMood(story_.Mood());
     map_.Update(nina_.Position(), mats_.Position(), mushrooms_);
     UpdateText();
+}
+
+// A opens the way past a message, and so does a tap on the map that was not
+// used by something else. Requests (Ask) are not affected, they wait for the
+// player to act.
+bool ExploreState::SkipPressed(bool tapUsed) const
+{
+    const InputService &input = services_.input;
+    if (input.IsPressed(Button::A))
+        return true;
+    return !tapUsed && input.IsPressed(Button::Touch) &&
+           ui::kMapArea.Contains(input.TouchX(), input.TouchY());
 }
 
 bool ExploreState::HandleMapTouch()
@@ -294,6 +303,7 @@ void ExploreState::DrawOffering(const RenderService &render) const
 
 void ExploreState::HandleDebugInput()
 {
+
 #ifdef WALDWEG_DEBUG
     const InputService &input = services_.input;
     RenderService &render = services_.render;

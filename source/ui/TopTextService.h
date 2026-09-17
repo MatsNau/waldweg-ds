@@ -25,6 +25,8 @@ public:
     void Init();
 
     void ShowPanel(bool show) { visible_ = show; }
+    // Small "A" badge at the lower right corner: this message can be skipped.
+    void ShowSkipHint(bool show) { skipHint_ = show; }
 
     // Clears the text inside the panel.
     void Clear() override;
@@ -45,4 +47,5 @@ private:
     NE_Material *font_ = nullptr;
     TextColor color_ = TextColor::Ink;
     bool visible_ = false;
+    bool skipHint_ = false;
 };

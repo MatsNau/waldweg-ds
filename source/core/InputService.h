@@ -37,9 +37,9 @@ public:
         return (pressed_ & kButtons) != 0;
     }
 
-    // Unit walking direction on the ground plane, zero when idle. The D-pad and
-    // the mirrored face buttons (X up, B down, Y left, A right) both work, so
-    // the game can be played left-handed with the stylus in the right hand.
+    // Unit walking direction on the ground plane, zero when idle. The D-pad
+    // alone walks; the face buttons stay free so that A can move the dialog on
+    // without also making Nina run to the right.
     Vec2 MoveDirection() const;
 
     bool IsTouching() const { return IsHeld(Button::Touch); }

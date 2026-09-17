@@ -8,10 +8,14 @@ namespace {
 
 constexpr int kMinReadingFrames = 90;
 constexpr int kFramesPerCharacter = 3;
-constexpr int kMaxReadingFrames = 270;
-// A newer message replaces the current one after it was visible this long.
-constexpr int kMinShownFrames = 45;
-
+constexpr int kMaxReadingFrames = 300;
+// Every message stays readable this long, even when the next one is waiting.
+constexpr int kMinShownFrames = 60;
+// While something is waiting, the current message does not linger.
+constexpr int kQueuedReadingFrames = 180;
+// A message that has been waiting this long is out of context and is dropped
+// instead of popping up minutes after what triggered it.
+constexpr int kStaleFrames = 900;
 } // namespace
 
 void DialogBox::Fill(Message &message, const char *speaker, const char *text, DialogTask task)
@@ -23,42 +27,18 @@ void DialogBox::Fill(Message &message, const char *speaker, const char *text, Di
 
 void DialogBox::Say(const char *speaker, const char *text)
 {
-    if (count_ > 0)
-    {
-        // Keep only waiting messages from this very moment.
-        int kept = 1;
-        for (int i = 1; i < count_; i++)
-        {
-            const Message &waiting = queue_[(head_ + i) % kQueueSize];
-            if (waiting.stamp == frame_)
-                queue_[(head_ + kept++) % kQueueSize] = waiting;
-        }
-        count_ = kept;
-
-        // An older current message makes room soon.
-        if (queue_[head_].stamp != frame_)
-        {
-            int remaining = kMinShownFrames - shown_;
-            if (remaining < 0)
-                remaining = 0;
-            if (timer_ > remaining)
-                timer_ = remaining;
-        }
-    }
-
     if (count_ >= kQueueSize)
-        return;
+        DropOldestWaiting();
 
     Message &message = queue_[(head_ + count_) % kQueueSize];
     Fill(message, speaker, text, DialogTask::None);
     message.stamp = frame_;
     count_++;
+
     if (count_ == 1)
-    {
-        timer_ = ReadingFrames(queue_[head_]);
-        shown_ = 0;
-        dirty_ = true;
-    }
+        StartCurrent();
+    else
+        ShortenCurrent();
 }
 
 void DialogBox::Ask(const char *speaker, const char *text, DialogTask task)
@@ -82,6 +62,8 @@ void DialogBox::CompleteTask(DialogTask task)
 void DialogBox::Clear()
 {
     count_ = 0;
+    timer_ = 0;
+    shown_ = 0;
     hasRequest_ = false;
     dirty_ = true;
 }
@@ -98,6 +80,65 @@ int DialogBox::ReadingFrames(const Message &message)
     return frames > kMaxReadingFrames ? kMaxReadingFrames : frames;
 }
 
+void DialogBox::StartCurrent()
+{
+    timer_ = ReadingFrames(queue_[head_]);
+    shown_ = 0;
+    dirty_ = true;
+}
+
+void DialogBox::ShortenCurrent()
+{
+    int least = kMinShownFrames - shown_;
+    if (least < 0)
+        least = 0;
+    int most = kQueuedReadingFrames - shown_;
+    if (most < least)
+        most = least;
+    if (timer_ > most)
+        timer_ = most;
+}
+
+void DialogBox::DropOldestWaiting()
+{
+    if (count_ < 2)
+        return;
+    for (int i = 1; i + 1 < count_; i++)
+        queue_[(head_ + i) % kQueueSize] = queue_[(head_ + i + 1) % kQueueSize];
+    count_--;
+}
+
+void DialogBox::DropStaleWaiting()
+{
+    int kept = 1;
+    for (int i = 1; i < count_; i++)
+    {
+        const Message &waiting = queue_[(head_ + i) % kQueueSize];
+        if (frame_ - waiting.stamp > static_cast<u32>(kStaleFrames))
+            continue;
+        if (kept != i)
+            queue_[(head_ + kept) % kQueueSize] = waiting;
+        kept++;
+    }
+    count_ = kept;
+}
+
+void DialogBox::Advance()
+{
+    head_ = (head_ + 1) % kQueueSize;
+    count_--;
+    if (count_ > 0)
+    {
+        StartCurrent();
+        if (count_ > 1)
+            ShortenCurrent();
+        return;
+    }
+    timer_ = 0;
+    shown_ = 0;
+    dirty_ = true;
+}
+
 void DialogBox::Update(bool skip)
 {
     frame_++;
@@ -106,15 +147,13 @@ void DialogBox::Update(bool skip)
 
     shown_++;
     timer_--;
-    if (timer_ > 0 && !skip)
+    DropStaleWaiting();
+
+    bool skipped = skip && shown_ >= kSkipGraceFrames;
+    if (timer_ > 0 && !skipped)
         return;
 
-    head_ = (head_ + 1) % kQueueSize;
-    count_--;
-    if (count_ > 0)
-        timer_ = ReadingFrames(queue_[head_]);
-    shown_ = 0;
-    dirty_ = true;
+    Advance();
 }
 
 const DialogBox::Message *DialogBox::Current() const
@@ -128,6 +167,9 @@ const DialogBox::Message *DialogBox::Current() const
 
 bool DialogBox::Draw(TopTextService &text)
 {
+    // The badge comes and goes without the text changing.
+    text.ShowSkipHint(CanSkip());
+
     if (!dirty_)
         return false;
     dirty_ = false;

@@ -43,6 +43,8 @@ public:
 private:
     // Returns true if the touch was used (a mushroom was tapped).
     bool HandleMapTouch();
+    // Returns true if the player wants the current message to end early.
+    bool SkipPressed(bool tapUsed) const;
     void ApplyIdentifyResult();
     void DrawOffering(const RenderService &render) const;
     void UpdateRestart();

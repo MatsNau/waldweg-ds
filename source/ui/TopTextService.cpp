@@ -23,6 +23,12 @@ constexpr s16 kDepthText = -3600;
 constexpr u32 kColorFrame = RGB15(15, 10, 6);
 constexpr u32 kColorPanel = RGB15(29, 26, 21);
 
+// Skip badge: hangs out of the lower right corner, below the last text row
+// (which ends at y = 48), so it never covers a line.
+constexpr int kBadgeX = 236;
+constexpr int kBadgeY = 48;
+constexpr int kBadgeSize = 14;
+
 u32 ColorValue(TextColor color)
 {
     switch (color)
@@ -78,6 +84,19 @@ void TopTextService::Draw() const
     s16 bottom = static_cast<s16>((kPanelTop + kPanelRows) * kGlyphSize);
     NE_2DDrawQuad(2, top + 2, 254, bottom - 2, kDepthFrame, kColorFrame);
     NE_2DDrawQuad(4, top + 4, 252, bottom - 4, kDepthPanel, kColorPanel);
+
+    if (skipHint_)
+    {
+        s16 x = kBadgeX;
+        s16 y = kBadgeY;
+        NE_2DDrawQuad(x, y, x + kBadgeSize, y + kBadgeSize, kDepthFrame, kColorFrame);
+        NE_2DDrawQuad(x + 2, y + 2, x + kBadgeSize - 2, y + kBadgeSize - 2, kDepthPanel, kColorPanel);
+        RenderService::Draw2DImage(font_, x + 3, y + 3, kGlyphSize, kGlyphSize,
+                                   (TextDE_SlotButtonA % kAtlasColumns) * kGlyphSize,
+                                   (TextDE_SlotButtonA / kAtlasColumns) * kGlyphSize,
+                                   kGlyphSize, kGlyphSize, kDepthText,
+                                   ColorValue(TextColor::Speaker));
+    }
 
     for (int row = 0; row < kTextRows; row++)
     {

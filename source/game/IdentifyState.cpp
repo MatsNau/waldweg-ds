@@ -63,7 +63,7 @@ void IdentifyState::Update()
 
     const InputService &input = services_.input;
 
-    // Turn pages with L/R, the D-pad or the mirrored face buttons.
+    // Turn pages with L/R, the D-pad or Y/A.
     if (input.IsPressed(Button::L) || input.IsPressed(Button::Left) || input.IsPressed(Button::Y))
         TurnPage(-1);
     if (input.IsPressed(Button::R) || input.IsPressed(Button::Right) || input.IsPressed(Button::A))

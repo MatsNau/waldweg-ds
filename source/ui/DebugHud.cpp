@@ -47,16 +47,17 @@ bool DebugHud::Draw(const Nina &nina, const Mats &mats, const Forest &forest,
     text.Write(column, row, "Debug (START: aus)");
     text.SetColor(TextColor::Ink);
 
-    text.Format(column, row + 1, "Poly %d/2048  Vtx %d", render.PolygonCount(), render.VertexCount());
-    text.Format(column, row + 2, "Objekte %d/%d  Pilze %d", forest.LastDrawnProps(), forest.PropCount(),
-                mushrooms.RemainingCount());
+    text.Format(column, row + 1, "Poly %d/%d max %d", render.PolygonCount(),
+                RenderService::kMaxPolygons, render.PeakPolygons());
+    text.Format(column, row + 2, "Vtx %d/%d max %d", render.VertexCount(),
+                RenderService::kMaxVertices, render.PeakVertices());
 
     FormatFixed(x, sizeof(x), nina.Position().x);
     FormatFixed(z, sizeof(z), nina.Position().z);
     FormatFixed(distance, sizeof(distance), mats.DistanceToNina());
-    text.Format(column, row + 3, "Nina %s|%s Mats %s", x, z, distance);
-
-    text.Format(column, row + 4, "%s  Nebel %04X", services_.timeOfDay.PhaseName(), render.FogDepth());
-    text.Write(column, row + 5, "SEL Zeit R+SEL Nacht L+SEL Ende");
+    text.Format(column, row + 3, "Objekte %d/%d  Pilze %d", forest.LastDrawnProps(),
+                forest.PropCount(), mushrooms.RemainingCount());
+    text.Format(column, row + 4, "Nina %s|%s Mats %s", x, z, distance);
+    text.Format(column, row + 5, "%s  Nebel %04X", services_.timeOfDay.PhaseName(), render.FogDepth());
     return true;
 }

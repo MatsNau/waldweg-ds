@@ -10,3 +10,7 @@ u32 TextDE_NextCodepoint(const char *&utf8);
 
 // Tile index of a codepoint in the patched 8x8 font (fnt/default.fnt).
 u32 TextDE_FontSlot(u32 codepoint);
+
+// "A in a circle" badge, drawn into an empty font slot by
+// assets/fonts/make_font_texture.py. Only exists in the 3D font atlas.
+constexpr u32 TextDE_SlotButtonA = 127;
