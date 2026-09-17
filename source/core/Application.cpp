@@ -33,6 +33,7 @@ void Application::Init()
     topText_.Init();
     subScreen_.Init();
     text_.Init();
+    audio_.Init();
 
     game_.Init();
 }
@@ -49,6 +50,7 @@ void Application::Run()
         input_.Update();
         game_.Update();
         timeOfDay_.Update();
+        audio_.Update();
 
         subScreen_.PrepareFrame();
         render_.Render(game_);

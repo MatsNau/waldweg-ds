@@ -2,6 +2,7 @@
 
 #include <time.h>
 
+#include "audio/AudioService.h"
 #include "core/InputService.h"
 #include "game/GameProgress.h"
 #include "ui/SubScreenService.h"
@@ -158,6 +159,12 @@ void ExploreState::Update()
         mats_.Update(nina_, forest_);
         camera_.Follow(nina_.Position());
     }
+
+    // Mats walks a step behind, so his steps are quieter.
+    if (nina_.StepTaken())
+        services_.audio.PlayStep(false);
+    if (mats_.StepTaken())
+        services_.audio.PlayStep(true);
 
     mushrooms_.SetGodMushroomVisible(progress_.IsGiven(ItemId::Lantern));
     if ((nina_.Position() - forest_.ShrinePosition()).LengthSq() < kShrineNear * kShrineNear)

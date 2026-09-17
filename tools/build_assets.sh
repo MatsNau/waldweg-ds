@@ -1,5 +1,5 @@
 #!/bin/sh
-# Generates models, textures and the font into nitrofiles/.
+# Generates models, textures, the font (nitrofiles/) and the sound effects (audio/).
 # Run inside the Wonderful Toolchain environment:  wf.cmd sh tools/build_assets.sh
 set -e
 cd "$(dirname "$0")/.."
@@ -93,6 +93,9 @@ fi
 )
 mv "$BUILD/ending"/ending_sky.img "$BUILD/ending"/ending_sky.pal "$BUILD/ending"/ending_sky.map nitrofiles/book/
 cp "$BUILD/ending/ending_chimneys.txt" nitrofiles/book/
+
+echo "== Geraeusche erzeugen (mmutil packt sie beim Build in die Soundbank)"
+"$PYTHON" assets/audio/gen_sfx.py audio
 
 echo "== Schrift mit Umlauten"
 "$PYTHON" assets/fonts/patch_umlauts.py

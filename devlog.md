@@ -25,6 +25,7 @@ Es ist ein Geburtstagsgeschenk. Start war am 14.09.2026, das Ziel ist ein spielb
 | BlocksDS | 1.23.0 (`/opt/wonderful/thirdparty/blocksds/core`) |
 | Nitro Engine | 0.16.0 (`/opt/wonderful/thirdparty/blocksds/external/nitro-engine`) |
 | NFLib | 1.1.13 (`.../external/nflib`) |
+| maxmod | 1.23.0, Teil von BlocksDS (`libs/maxmod`, `tools/mmutil`) |
 | ARM-GCC | 16.2 inkl. libstdc++ (C++17) |
 | melonDS | 1.1, `C:\Programming\tools\melonDS\melonDS.exe` |
 | Blender | 5.2.1 LTS, `C:\Program Files\Blender Foundation\Blender 5.2` |
@@ -44,10 +45,10 @@ Es ist ein Geburtstagsgeschenk. Start war am 14.09.2026, das Ziel ist ein spielb
 | `build.cmd` | baut `waldweg.nds` |
 | `build.cmd clean` | löscht Build-Dateien |
 | `run.cmd` | baut und startet melonDS |
-| `wf.cmd sh tools/build_assets.sh` | erzeugt Modelle (Blender), konvertiert sie (obj2dl, grit) und patcht die Schrift |
+| `wf.cmd sh tools/build_assets.sh` | erzeugt Modelle (Blender), konvertiert sie (obj2dl, grit), patcht die Schrift und erzeugt die Geräusche |
 | `wf.cmd <befehl>` | beliebiger Befehl in der BlocksDS-Umgebung |
 
-## Projektstruktur (Stand Tag 3)
+## Projektstruktur (Stand Tag 6)
 Moderne Klassen-/Service-Struktur (Wunsch des Users): `main.cpp` startet nur die `Application`.
 ```
 Makefile                      BlocksDS (C++17, -Wall -Wextra); Standard = Debug (WALDWEG_DEBUG), Release: make RELEASE=1
@@ -61,6 +62,7 @@ source/world/                 TimeOfDayService (6 Keyframes, BlendTo), Forest (L
                               MushroomField (Pilze platzieren, Reichweite), LanternLight (Punktlicht + Lichtscheibe), CameraRig
 source/entities/              CharacterRig (Einzelteile, Animation, Gegenstände in Hand/am Hals), Character, Nina, Mats (Folgen + ShowItem)
 source/game/                  Game (Zustandsautomat, besitzt GameProgress), GameState, ExploreState, GameProgress, StoryDirector (Story-Tore)
+source/audio/                 AudioService (maxmod, Ambience-Loop + One-Shots, Winddriften, Böen, Knarzen)
 source/ui/                    SubScreenService (NFLib-Layer + Sprites unten), UiLayout (Pixel-Layout), TextSurface (Basis: Umbruch/Format),
                               TextService (Text unten), TopTextService (Dialogtext oben, VRAM B), ForestMap (Karte),
                               Backpack (Slots, Drag & Drop, Blätter, Porträt), DialogBox (Auto-Weiter + Aufgaben), DebugHud, text_de
@@ -69,12 +71,15 @@ assets/blender/models_world.py      Boden, Bäume, Tanne, Busch, Stein, Stumpf, 
 assets/blender/models_characters.py Nina & Mats als Einzelteile (Kopf/Körper/Arm/Bein)
 assets/blender/models_mushrooms.py  Welt-Pilze (7 Arten + Waldgott-Pilz) und Glitzer-Stern
 assets/blender/models_items.py      Korb, Schal, Laterne, Glöckchen (3D, an Mats)
+assets/audio/synth.py         Synthese ohne numpy: Rauschen, Filter, Hüllkurven, Korn-Wolken, WAV mit Loop-Punkten
+assets/audio/gen_sfx.py       erzeugt audio/*.wav (Schritte, Ambience, Bö, Knarzen, Umblättern)
 assets/ui/pixelart.py         Mini-Canvas für indizierte PNGs (ohne Pillow)
 assets/ui/gen_ui.py           Pixelgrafik unten: Karten-Kacheln, Leiste, Dialogbox, Symbole, Gegenstände, Mats-Porträts
 assets/blender/gen_models.py  Einstiegspunkt für Blender
 assets/fonts/                 Schrift + Umlaut-Patch
 tools/build_assets.sh         Asset-Pipeline (konvertiert automatisch alle erzeugten OBJ)
-nitrofiles/                   generierte Spieldaten (models/, textures/, fnt/, ui/)
+nitrofiles/                   generierte Spieldaten (models/, textures/, fnt/, ui/, book/)
+audio/                        generierte WAVs; mmutil packt sie beim Build zur soundbank.bin
 ```
 
 ---
@@ -303,6 +308,46 @@ nitrofiles/                   generierte Spieldaten (models/, textures/, fnt/, u
 0. **Nächste Sitzung: Sound und Musik** (Tag 6).
 1. Test durch User: Kuh läuft beim Abblenden weiter (Finale), Haare, Schatten, Blätter, Kuhpilz-Position.
 2. Geburtstagsbotschaft, Name der Freundin, Spieltitel.
+
+## Tag 6 – Mi 16.09.2026 (in Arbeit): Geräusche
+
+**Entscheidung mit dem User:** SFX werden **synthetisiert** statt gesammelt. Alle vier gewünschten Geräusche (Laub, Wind, Knarzen, Papier) sind rauschbasiert, also genau das, was sich gut erzeugen lässt. Passt zur übrigen Pipeline (Modelle, UI, Buchseiten werden auch generiert), keine Lizenz-Buchhaltung, exakte Loop-Punkte, sofort nachregelbar. Rückfallplan: klingt ein Sound zu synthetisch, sucht der User einen CC0-Sample von freesound.org und er wird eingebaut.
+
+**Erledigt**
+- **Build:** `AUDIODIRS := audio`, `-lmm9` + `$(BLOCKSDS)/libs/maxmod` im Makefile. mmutil packt `audio/*.wav` in `soundbank.bin`, das per NitroFS im ROM landet (`mmInitDefault("nitro:/soundbank.bin")`). ROM 685 → 860 KB.
+- `assets/audio/synth.py`: kleine Synthese-Bibliothek ohne numpy (Rauschen, Ein-Pol-/Biquad-/State-Variable-Filter, Hüllkurven, Korn-Wolken, Stick-Slip-Impulse, WAV-Writer mit `smpl`-Chunk).
+- `assets/audio/gen_sfx.py` erzeugt 11 Samples, 8 Bit mono, zusammen **173 KB**:
+  - `step1–4` (0,20 s, 16 kHz): Laubknistern als Korn-Wolke (Dichte bricht nach dem Auftreten zusammen) + Mittel-Scharren + weicher Erdaufschlag. 4 Varianten.
+  - `amb_forest` (6,00 s, 11 kHz, **Loop**): Grundrascheln + tiefer Wind. Bewusst fast gleichmäßig.
+  - `gust` (2,80 s): Bö durch die Kronen, wird zufällig über den Teppich gelegt.
+  - `creak1–3` (1,70 s): Stick-Slip-Impulse durch Stammresonanzen, Impulse werden zum Ende langsamer (Holz setzt sich).
+  - `page1–2` (0,34 s, 16 kHz): Papier-Körner durch einen mitlaufenden Bandpass, zwei Hücker (Blatt hebt, Blatt legt sich).
+- `source/audio/AudioService`: startet die Ambience als Dauer-Loop und hält den Handle für die Lautstärke. Pro Frame: langsames Winddriften (zwei Perioden ~24 s und ~10 s, die nicht aufeinander passen), Bö alle 15–37 s, Knarzen alle 12–43 s – nachts alles 1,7× seltener und die Ambience leiser (Pegel siehe User-Test 1). One-Shots bekommen zufällige Tonhöhe/Lautstärke/Panorama.
+- **Schritte:** `CharacterRig::StepTaken()` meldet den Frame, in dem ein Fuß aufsetzt (Extrem der Schwingphase, zwei pro Zyklus, erst ab `walkBlend_ > 0,3`). **Die Beine laufen schnell:** ein voller Zyklus pro 1,1 Einheiten = 20 Frames = **6 Fußaufsätze/s** – optisch abgenommen, als Klang aber ein Sprint. Deshalb klingt nur **jeder dritte** Aufsatz (`kFootfallsPerSound`): exakt 2 Schritte/s, weiterhin synchron zu einem sichtbaren Aufsetzen. Die Animation bleibt unverändert. `ExploreState` spielt sie: Nina laut, Mats (läuft hinterher) deutlich leiser und weiter aus der Mitte.
+- **Umblättern:** `IdentifyState::TurnPage` spielt abwechselnd `page1`/`page2`.
+- Asset-Pipeline: `tools/build_assets.sh` erzeugt die WAVs mit.
+
+**Erkenntnisse**
+- **mmutil liest Loop-Punkte** aus dem `smpl`-Chunk einer WAV-Datei (empirisch geprüft: Bank mit/ohne Chunk unterscheidet sich genau in `loop_start`/`length`, `looptype` 1). Damit braucht die Ambience kein Modul.
+- **Ungerade Datenlänge bricht mmutil:** das RIFF-Pad-Byte nach einem ungeraden `data`-Chunk wird als nächster Chunk gelesen → `ERROR: Can't read input file` (die Datei landet trotzdem in der Bank). `write_wav` kürzt deshalb auf Vielfache von 8 Samples – das ist ohnehin die Wortausrichtung, die die Sound-Hardware für Loop-Punkte braucht.
+- `mmEffectActive` gibt es in BlocksDS-maxmod **nicht**; der Ambience-Handle wird einfach nie freigegeben (`mmEffectRelease` nur für One-Shots, damit maxmod Kanäle recyceln kann).
+- maxmod und Nitro Engine vertragen sich: `mmInitDefault` nach `irqSet(IRQ_VBLANK, NE_VBLFunc)` lässt NEs Handler in Ruhe, auf dem DS braucht der ARM9 kein `mmFrame()`.
+- Nahtprüfung `amb_forest` (Werte der aktuellen Fassung: Sprung am Loop-Punkt 8, im Puffer median 10 / p99 38) – kein Klick. Erreicht durch zirkulär laufende Filter (Puffer zweimal durch, zweiter Durchlauf zählt), LFOs mit ganzzahliger Zyklenzahl (2, 5, 11 pro Loop) und Korn-Wolken, die über das Puffer-Ende hinaus vorne weiterlaufen.
+
+
+**User-Test 1 (16.09.) → Ambience zu laut und zu aggressiv**
+- Befund des User: „Das Rauschen ist noch viel zu laut und aggressiv und präsent, das soll mehr im Hintergrund laufen.“
+- Zwei getrennte Ursachen:
+  - **Spektrum:** Bett-Bandpass lag bei 3100 Hz, die Blatt-Ticks bei 4200 Hz – genau im empfindlichsten Ohrbereich (2–5 kHz). Das klingt nicht nach Wald, sondern nach Zischen. Jetzt Bett 1600 Hz, Ticks 2300 Hz (Dichte 55 → 24), Tiefpass 2400 Hz über die ganze Mischung, Blattanteile heruntergezogen (0,60/0,45 → 0,26/0,13) – der tiefe Wind trägt das Bett jetzt allein. Messung: 59 % der Energie unter 500 Hz, nur noch 13 % zwischen 2 und 5 kHz.
+  - **Pegel:** Rauschen hat einen niedrigen Scheitelfaktor, deshalb ist ein Dauerteppich bei gleicher Lautstärke-Einstellung viel lauter als die kurzen Effekte darüber (Ambience-RMS war 33 gegen 12 der Bö). `kAmbienceByPhase` 165…106 → **68…42**, Winddriften ±15/±7 → ±7/±3, Bö-Lautstärke 70–120 → 52–84. Effektiver Pegel 21,5 → 6,7 (gut 10 dB leiser).
+- Bö bekam dieselbe Behandlung schwächer dosiert (Helligkeitsverlauf 1700+2400 → 1200+1400 Hz, mehr Luft als Blatt).
+- Loop-Naht nach dem zusätzlichen Tiefpass weiter sauber (Sprung 8, p99 38).
+- **Merksatz:** Dauerteppiche gehören spektral unter den Präsenzbereich und brauchen eine deutlich niedrigere Lautstärke-Einstellung als One-Shots – gleiche Zahl heißt bei Rauschen nicht gleiche Lautheit.
+
+**Offen**
+1. **Test durch User: zweiter Durchgang** – Ambience jetzt leiser und dumpfer, Lautstärkeverhältnisse, ob die Schritte zu oft/zu selten kommen, ob Bö und Knarzen zu häufig sind. Falls die Schritte gegen die Beine „schwimmen“: Alternative wäre, die Animation zu verlangsamen (`kStrideLength` 1,1 → ~3,0) – ändert aber das abgenommene Laufbild.
+2. Musik (Stimmung noch offen).
+3. Shroomchen läuft ohne Huftritte; Glockengeläut, Pilz-Einsammeln und Fehler-Blatt haben noch keinen Sound – auf Wunsch nachziehbar.
 
 ## Offene Fragen an den User
 - Konsolen-Setup: **Flashcart** (Modell/Konsole noch offen, nicht dringend).

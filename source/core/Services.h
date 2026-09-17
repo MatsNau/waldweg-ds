@@ -2,6 +2,7 @@
 
 class InputService;
 class AssetService;
+class AudioService;
 class RenderService;
 class TextService;
 class TimeOfDayService;
@@ -18,4 +19,5 @@ struct Services
     TimeOfDayService &timeOfDay;
     SubScreenService &subScreen;
     TopTextService &topText;
+    AudioService &audio;
 };

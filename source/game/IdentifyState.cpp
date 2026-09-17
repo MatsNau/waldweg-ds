@@ -2,6 +2,7 @@
 
 #include <NEMain.h>
 
+#include "audio/AudioService.h"
 #include "core/InputService.h"
 #include "render/RenderService.h"
 #include "world/TimeOfDayService.h"
@@ -64,9 +65,9 @@ void IdentifyState::Update()
 
     // Turn pages with L/R, the D-pad or the mirrored face buttons.
     if (input.IsPressed(Button::L) || input.IsPressed(Button::Left) || input.IsPressed(Button::Y))
-        book_.Turn(-1);
+        TurnPage(-1);
     if (input.IsPressed(Button::R) || input.IsPressed(Button::Right) || input.IsPressed(Button::A))
-        book_.Turn(+1);
+        TurnPage(+1);
 
     switch (view_.Update(input))
     {
@@ -82,6 +83,12 @@ void IdentifyState::Update()
                 Finish(IdentifySession::Outcome::Cancelled);
             break;
     }
+}
+
+void IdentifyState::TurnPage(int delta)
+{
+    book_.Turn(delta);
+    services_.audio.PlayPageTurn();
 }
 
 void IdentifyState::Finish(IdentifySession::Outcome outcome)

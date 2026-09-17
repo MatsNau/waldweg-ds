@@ -30,7 +30,7 @@ SOURCEDIRS	:= source
 INCLUDEDIRS	:= source
 GFXDIRS		:=
 BINDIRS		:=
-AUDIODIRS	:=
+AUDIODIRS	:= audio
 NITROFSDIR	:= nitrofiles
 
 # Defines passed to all files
@@ -54,9 +54,10 @@ endif
 # Libraries
 # ---------
 
-LIBS		:= -lNE -lnflib -lnds9
+LIBS		:= -lNE -lnflib -lmm9 -lnds9
 LIBDIRS		:= $(BLOCKSDSEXT)/nitro-engine \
 		   $(BLOCKSDSEXT)/nflib \
+		   $(BLOCKSDS)/libs/maxmod \
 		   $(BLOCKSDS)/libs/libnds
 
 # Build artifacts

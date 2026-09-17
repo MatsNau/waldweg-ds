@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audio/AudioService.h"
 #include "core/InputService.h"
 #include "core/Services.h"
 #include "game/Game.h"
@@ -26,6 +27,7 @@ private:
     TextService text_;
     TopTextService topText_;
     TimeOfDayService timeOfDay_{ render_ };
-    Services services_{ input_, assets_, render_, text_, timeOfDay_, subScreen_, topText_ };
+    AudioService audio_{ timeOfDay_ };
+    Services services_{ input_, assets_, render_, text_, timeOfDay_, subScreen_, topText_, audio_ };
     Game game_{ services_ };
 };

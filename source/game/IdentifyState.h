@@ -21,6 +21,7 @@ public:
     void Draw3D() override;
 
 private:
+    void TurnPage(int delta);
     void Finish(IdentifySession::Outcome outcome);
 
     Services &services_;

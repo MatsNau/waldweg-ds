@@ -34,6 +34,9 @@ public:
     // distanceMoved: how far the character moved this frame (drives the steps).
     void Update(Fixed distanceMoved);
 
+    // True on the frame a foot lands, for the footstep sound. Two per cycle.
+    bool StepTaken() const { return stepTaken_; }
+
     void SetHandItem(Hand hand, ModelId model);
     void SetNeckItem(ModelId model) { neckItem_ = model; }
     void SetHeadItem(ModelId model) { headItem_ = model; }
@@ -61,4 +64,7 @@ private:
     Angle stepPhase_;
     Angle idlePhase_;
     Fixed walkBlend_; // 0 = standing, 1 = walking
+    bool stepTaken_ = false;
+    int stepHalf_ = 0;
+    int footfalls_ = 0;
 };

@@ -25,6 +25,8 @@ public:
 
     Vec2 Position() const { return position_; }
     Angle Facing() const { return facing_; }
+    // True on the frame a foot lands, for the footstep sound.
+    bool StepTaken() const { return rig_.StepTaken(); }
 
     void Draw(const RenderService &render) const;
 
