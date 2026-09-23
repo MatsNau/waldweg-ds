@@ -9,15 +9,17 @@ class TimeOfDayService;
 // All sound: the looping forest ambience plus the one-shot effects.
 // maxmod plays them from the soundbank that the Makefile packs into NitroFS.
 //
-// The ambience loop is deliberately even; the life comes from here: a slow
-// volume drift, gusts rolling through now and then, and the odd tree creak.
+// The ambience is a thirty second cut from a field recording (see
+// assets/audio/make_ambience.py) and brings its own wind and birds, so the
+// only thing done to it here is the level: quieter as the sun goes down,
+// eased over so the change is never a step.
 class AudioService
 {
 public:
     explicit AudioService(const TimeOfDayService &timeOfDay) : timeOfDay_(timeOfDay) {}
 
     void Init();
-    // Once per frame: wind drift, gusts, creaks.
+    // Once per frame: eases the ambience towards the level of the day phase.
     void Update();
 
     // A footstep on the forest floor. Mats walks behind Nina, so his steps
@@ -26,7 +28,6 @@ public:
     void PlayPageTurn();
 
 private:
-    void StartAmbience();
     int AmbienceVolume() const;
     // Plays a one-shot with random pitch, volume and panning, so a sound that
     // repeats often never turns into a machine gun.
@@ -35,8 +36,7 @@ private:
     const TimeOfDayService &timeOfDay_;
     Random rng_{ 0x5EED1705 };
     mm_sfxhand ambience_ = 0;
-    u32 frame_ = 0;
-    u32 nextGust_ = 0;
-    u32 nextCreak_ = 0;
+    int volume_ = 0;
+    int easeFrame_ = 0;
     int pageVariant_ = 0;
 };
