@@ -3,7 +3,6 @@
 #include <nds.h>
 
 #include "core/Fatal.h"
-#include "math/Angle.h"
 #include "soundbank.h"
 #include "world/TimeOfDayService.h"
 
@@ -11,24 +10,22 @@ namespace {
 
 constexpr int kStepSounds[] = { SFX_STEP1, SFX_STEP2, SFX_STEP3, SFX_STEP4 };
 constexpr int kPageSounds[] = { SFX_PAGE1, SFX_PAGE2 };
-constexpr int kCreakSounds[] = { SFX_CREAK1, SFX_CREAK2, SFX_CREAK3 };
 
 // The forest quietens down as the sun goes; one entry per DayPhase.
 //
-// Held low on purpose: noise has a low crest factor, so at the same setting a
-// steady bed sounds far louder than the short effects on top of it. This is a
-// bed you notice when you stop and listen, not one you hear over everything.
-constexpr int kAmbienceByPhase[] = { 68, 66, 60, 54, 48, 42 };
+// Held low on purpose: this is a bed you notice when you stop and listen, not
+// one you hear over everything. The recording is levelled so that it fills the
+// eight bits of the sample, which is what these numbers are turning back down.
+constexpr int kAmbienceByPhase[] = { 56, 54, 49, 44, 39, 34 };
 static_assert(sizeof(kAmbienceByPhase) / sizeof(kAmbienceByPhase[0])
               == static_cast<int>(DayPhase::Count));
 
+// One step of volume every other frame: the phase change takes about as long
+// to be heard as it takes to be seen (TimeOfDayService blends over a second).
+constexpr int kVolumeEaseFrames = 2;
+
 constexpr int kCentre = 128;
 constexpr mm_hword kNormalRate = 1024; // 6.10 fixed point, 1024 = as recorded
-
-// Two drift periods that do not line up (about 24 s and 10 s), so the wind
-// never settles into an audible rhythm over the six second ambience loop.
-constexpr s32 kSlowDrift = 23;
-constexpr s32 kFastDrift = 53;
 
 constexpr int Clamp(int value, int lo, int hi)
 {
@@ -44,25 +41,17 @@ void AudioService::Init()
         Fatal("Soundbank konnte nicht geladen werden.");
 
     mmLoadEffect(SFX_AMB_FOREST);
-    mmLoadEffect(SFX_GUST);
-    for (int sound : kCreakSounds)
-        mmLoadEffect(sound);
     for (int sound : kStepSounds)
         mmLoadEffect(sound);
     for (int sound : kPageSounds)
         mmLoadEffect(sound);
 
-    StartAmbience();
-    nextGust_ = 360;
-    nextCreak_ = 540;
-}
+    volume_ = AmbienceVolume();
 
-void AudioService::StartAmbience()
-{
     mm_sound_effect sound = {};
     sound.id = SFX_AMB_FOREST;
     sound.rate = kNormalRate;
-    sound.volume = static_cast<mm_byte>(AmbienceVolume());
+    sound.volume = static_cast<mm_byte>(volume_);
     sound.panning = kCentre;
     // Not released: the handle stays valid so the volume can keep changing.
     ambience_ = mmEffectEx(&sound);
@@ -75,28 +64,16 @@ int AudioService::AmbienceVolume() const
 
 void AudioService::Update()
 {
-    ++frame_;
+    int target = AmbienceVolume();
+    if (volume_ == target)
+        return;
 
-    Angle slow = Angle::FromBinary(static_cast<s32>(frame_) * kSlowDrift);
-    Angle fast = Angle::FromBinary(static_cast<s32>(frame_) * kFastDrift);
-    int drift = (slow.Sin() * 7 + fast.Sin() * 3).ToInt();
-    mmEffectVolume(ambience_, static_cast<mm_word>(Clamp(AmbienceVolume() + drift, 0, 255)));
+    if (++easeFrame_ < kVolumeEaseFrames)
+        return;
+    easeFrame_ = 0;
 
-    // Everything happens more rarely once it is dark.
-    bool night = timeOfDay_.Phase() == DayPhase::Night;
-    int stretch = night ? 170 : 100;
-
-    if (frame_ >= nextGust_)
-    {
-        Play(SFX_GUST, rng_.Range(52, 84), 90, 70);
-        nextGust_ = frame_ + static_cast<u32>(rng_.Range(900, 2200) * stretch / 100);
-    }
-
-    if (frame_ >= nextCreak_)
-    {
-        Play(kCreakSounds[rng_.Range(0, 2)], rng_.Range(38, 68), 130, 90);
-        nextCreak_ = frame_ + static_cast<u32>(rng_.Range(700, 2600) * stretch / 100);
-    }
+    volume_ += target > volume_ ? 1 : -1;
+    mmEffectVolume(ambience_, static_cast<mm_word>(volume_));
 }
 
 void AudioService::Play(int sound, int volume, int rateJitter, int panSpread)

@@ -437,3 +437,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Audio-Quellmaterial (zu gross fuer das Repo, siehe assets/audio/source/README.md)
+assets/audio/source/*.mp3
+assets/audio/source/*.wav
+assets/audio/source/*.flac

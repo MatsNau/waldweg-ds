@@ -1,13 +1,10 @@
-"""Procedural sound synthesis for the forest sound effects (no numpy needed).
+"""Procedural sound synthesis for the short sound effects (no numpy needed).
 
 Signals are plain Python lists of floats, nominally in [-1, 1]. The buffers are
-a few seconds long at 11-16 kHz, so plain loops are fast enough.
+a fraction of a second at 16 kHz, so plain loops are fast enough.
 
-Filters take a `circular` flag: the buffer runs through the filter twice and
-only the second pass is kept, so the filter state at the end of the buffer
-matches the state at its start. Together with LFOs that complete a whole number
-of cycles (see `lfo`) and grain clouds that wrap around (`grain_cloud`), that is
-what makes the looping ambience seamless.
+write_wav is shared with make_ambience.py, which cuts the looping forest
+ambience out of a recording instead of synthesising it.
 """
 import math
 import struct
@@ -19,19 +16,10 @@ def white(n, rng):
     return [rng.uniform(-1.0, 1.0) for _ in range(n)]
 
 
-def lfo(n, cycles, low=0.0, high=1.0, phase=0.0):
-    """Sine that completes exactly `cycles` cycles over the buffer, so its value
-    and slope are continuous across a loop point."""
-    mid = (low + high) * 0.5
-    amp = (high - low) * 0.5
-    return [mid + amp * math.sin(2.0 * math.pi * (cycles * i / n + phase)) for i in range(n)]
-
-
-def grain_cloud(n, rate, rng, density, burst=(0.0012, 0.005), wrap=False):
+def grain_cloud(n, rate, rng, density, burst=(0.0012, 0.005)):
     """Sparse cloud of very short noise bursts, the raw material for crackling
     leaves and rustling paper. `density` is grains per second, either a number
-    or a callable index -> number. With `wrap`, grains crossing the end of the
-    buffer continue at its start (needed for loops)."""
+    or a callable index -> number."""
     if not callable(density):
         constant = float(density)
 
@@ -52,9 +40,7 @@ def grain_cloud(n, rate, rng, density, burst=(0.0012, 0.005), wrap=False):
         for i in range(length):
             index = start + i
             if index >= n:
-                if not wrap:
-                    break
-                index -= n
+                break
             out[index] += amplitude * rng.uniform(-1.0, 1.0) * math.exp(-4.0 * i / length)
 
         # Exponential gaps: grains arrive irregularly, never in a rhythm.
@@ -62,41 +48,10 @@ def grain_cloud(n, rate, rng, density, burst=(0.0012, 0.005), wrap=False):
     return out
 
 
-def impulse_train(n, rate, rng, interval, jitter=0.3, click=0.0015):
-    """Stick-slip pulses: what makes wood creak rather than just rumble.
-    `interval` is seconds between pulses, either a number or a callable
-    index -> number, so a creak can slow down as it fades."""
-    if not callable(interval):
-        constant = float(interval)
-
-        def interval(_index, _value=constant):
-            return _value
-
-    out = [0.0] * n
-    position = 0.0
-    while position < n:
-        start = int(position)
-        length = max(int(click * rate), 2)
-        amplitude = rng.uniform(0.5, 1.0)
-        for i in range(length):
-            if start + i >= n:
-                break
-            out[start + i] += amplitude * rng.uniform(-1.0, 1.0) * (1.0 - i / length)
-        position += rate * interval(start) * rng.uniform(1.0 - jitter, 1.0 + jitter)
-    return out
-
-
 # ------------------------------------------------------------------- filters
 
 
-def _run(x, step, circular):
-    if circular:
-        for value in x:
-            step(value)
-    return [step(value) for value in x]
-
-
-def lowpass(x, cutoff, rate, circular=False):
+def lowpass(x, cutoff, rate):
     k = 1.0 - math.exp(-2.0 * math.pi * cutoff / rate)
     state = 0.0
 
@@ -105,15 +60,10 @@ def lowpass(x, cutoff, rate, circular=False):
         state += k * (value - state)
         return state
 
-    return _run(x, step, circular)
+    return [step(value) for value in x]
 
 
-def highpass(x, cutoff, rate, circular=False):
-    low = lowpass(x, cutoff, rate, circular)
-    return [value - filtered for value, filtered in zip(x, low)]
-
-
-def bandpass(x, freq, q, rate, circular=False):
+def bandpass(x, freq, q, rate):
     """Two-pole resonant band pass (RBJ cookbook, 0 dB peak gain)."""
     w = 2.0 * math.pi * freq / rate
     alpha = math.sin(w) / (2.0 * q)
@@ -129,7 +79,7 @@ def bandpass(x, freq, q, rate, circular=False):
         y2, y1 = y1, y
         return y
 
-    return _run(x, step, circular)
+    return [step(value) for value in x]
 
 
 def sweep_band(x, freqs, q, rate):
@@ -204,10 +154,6 @@ def mix(*layers):
 def normalize(x, peak=0.9):
     loudest = max(abs(value) for value in x) or 1.0
     return [value * peak / loudest for value in x]
-
-
-def soft_clip(x):
-    return [math.tanh(value) for value in x]
 
 
 # ---------------------------------------------------------------- wav output

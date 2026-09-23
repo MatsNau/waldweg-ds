@@ -1,6 +1,7 @@
 #!/bin/sh
 # Generates models, textures, the font (nitrofiles/) and the sound effects (audio/).
 # Run inside the Wonderful Toolchain environment:  wf.cmd sh tools/build_assets.sh
+# The ambience additionally needs ffmpeg (FFMPEG=... to point at it).
 set -e
 cd "$(dirname "$0")/.."
 
@@ -25,6 +26,23 @@ fi
 if grep -q "Traceback" "$BUILD/blender.log"; then
     grep -A30 "Traceback" "$BUILD/blender.log"
     exit 1
+fi
+
+echo "== Blender: handgemachte Teile ueber die erzeugten schreiben"
+if ls assets/blender/handmade/*.blend > /dev/null 2>&1; then
+    "$BLENDER" --background --factory-startup --python assets/blender/export_handmade.py -- "$BUILD" > "$BUILD/handmade.log" 2>&1 || true
+    if grep -q "Traceback" "$BUILD/handmade.log"; then
+        grep -A30 "Traceback" "$BUILD/handmade.log"
+        exit 1
+    fi
+    grep "^Hinweis " "$BUILD/handmade.log" || true
+    if grep -q "^FEHLER" "$BUILD/handmade.log"; then
+        grep "^FEHLER" "$BUILD/handmade.log"
+        exit 1
+    fi
+    grep "^handmade " "$BUILD/handmade.log"
+else
+    echo "  keine, es bleibt bei den erzeugten Modellen"
 fi
 
 echo "== obj2dl: Modelle konvertieren"
@@ -96,6 +114,9 @@ cp "$BUILD/ending/ending_chimneys.txt" nitrofiles/book/
 
 echo "== Geraeusche erzeugen (mmutil packt sie beim Build in die Soundbank)"
 "$PYTHON" assets/audio/gen_sfx.py audio
+# Ambience aus der Aufnahme schneiden. Braucht ffmpeg und die Quelldatei; fehlt
+# eines davon, sagt das Skript das und die eingecheckte Fassung bleibt liegen.
+FFMPEG="${FFMPEG:-/c/msys64/ucrt64/bin/ffmpeg.exe}" "$PYTHON" assets/audio/make_ambience.py audio
 
 echo "== Schrift mit Umlauten"
 "$PYTHON" assets/fonts/patch_umlauts.py
