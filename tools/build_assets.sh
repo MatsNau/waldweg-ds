@@ -117,7 +117,8 @@ fi
 mv "$BUILD/ending"/ending_sky.img "$BUILD/ending"/ending_sky.pal "$BUILD/ending"/ending_sky.map nitrofiles/book/
 cp "$BUILD/ending/ending_chimneys.txt" nitrofiles/book/
 
-echo "== Wald-Ambience (mmutil packt sie beim Build in die Soundbank)"
+echo "== Schritte und Wald-Ambience (mmutil packt sie beim Build in die Soundbank)"
+"$PYTHON" assets/audio/gen_sfx.py audio
 # Braucht ffmpeg und die Aufnahme; fehlt eines davon, bleibt die eingecheckte Fassung liegen.
 FFMPEG="${FFMPEG:-/c/msys64/ucrt64/bin/ffmpeg.exe}" "$PYTHON" assets/audio/make_ambience.py audio
 

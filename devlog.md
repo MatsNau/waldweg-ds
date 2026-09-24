@@ -686,8 +686,15 @@ Hier war nichts eingerichtet. Neu installiert:
 
 **User-Test:** Ambience noch zu laut → `kAmbienceByPhase` **14…8**. Außerdem „bleibt stehen, sobald das Klavier losgeht“ (keine Framedrops, ein Stillstand). Verdacht: das an diesem Tag eingeschaltete melonDS-**AudioSync** – der Emulator wartet dann auf das Audiogerät (hier ein Headset) und steht, wenn es hängt. Wieder **aus**; JIT allein hält 60/60. Der User testet zusätzlich auf dem Handy.
 
+**User-Test auf dem Handy:** läuft gut – das Stehenbleiben war also der PC/melonDS dort. Wünsche:
+- **Schritte zurück** (aus dem Stand vor Commit `f383f3a` „rework sound“): `audio/step1–4.wav` (Generator erzeugt sie bitgleich), `gen_sfx.py` (ohne Umblättern), Schritt-Erkennung in `CharacterRig`, `AudioService::PlayStep`, Aufrufe in `ExploreState`. Umblättern bleibt draußen.
+- **Ambience noch leiser, das Rauschen ist sonst zu laut** → `kAmbienceByPhase` **7…4** (ein Achtel des Ursprungs).
+- Soundbank: `SFX_AMB_FOREST`, `SFX_STEP1–4`. Build ohne Warnungen, melonDS startet ohne Fehler.
+- ⚠ Commit `f383f3a` enthält `waldweg.nds` **mit** der Musik (17,6 MB); `origin` ist `github.com/MatsNau/waldweg-ds`.
+
 **Offen**
-1. Test durch User (PC ohne AudioSync + Handy): Bleibt das Spiel noch stehen? Ambience leise genug? Lautstärke (`kMusicVolume`), Pause (`kMusicPauseSamples`). Icon im DS-Menü.
+1. Test durch User: Schritte, Ambience-Lautstärke.
+2. Falls das 8-Bit-Rauschen der Ambience auch leise noch stört: 16-Bit-Fassung aus `forest_birdsong.mp3` (liegt auf dem alten Rechner). Lautstärke (`kMusicVolume`), Pause (`kMusicPauseSamples`). Icon im DS-Menü.
 2. `waldweg.nds` ist im Repo eingecheckt – mit Musik darf es nicht in ein öffentliches Repo.
 
 ## Offene Fragen an den User

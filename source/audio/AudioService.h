@@ -5,9 +5,12 @@
 #include <maxmod9.h>
 #include <nds/ndstypes.h>
 
+#include "core/Random.h"
+
 class TimeOfDayService;
 
-// All sound: the piano soundtrack and, quietly underneath, the forest.
+// All sound: the piano soundtrack, quietly underneath it the forest, and the
+// footsteps.
 //
 // The soundtrack is far too big for RAM and is streamed from NitroFS (see
 // assets/audio/make_music.py); without the file the game runs without music.
@@ -25,6 +28,10 @@ public:
     // eases the ambience towards the level of the day phase.
     void Update();
 
+    // A footstep on the forest floor. Mats walks behind Nina, so his steps
+    // are quieter and wander further from the centre.
+    void PlayStep(bool distant);
+
     // Seconds the soundtrack stream has played (pauses included), -1 without music.
     int MusicSeconds() const;
 
@@ -40,6 +47,7 @@ private:
     mm_word ReadMusic(mm_word length, s16 *dest);
 
     const TimeOfDayService &timeOfDay_;
+    Random rng_{ 0x5EED1705 };
     mm_sfxhand ambience_ = 0;
     int ambienceVolume_ = 0;
     int ambienceEaseFrame_ = 0;

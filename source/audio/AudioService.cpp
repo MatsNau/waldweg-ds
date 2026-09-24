@@ -10,10 +10,10 @@ namespace {
 
 // --- Ambience ---
 // The forest quietens down as the sun goes; one entry per DayPhase (0..255).
-// A quarter of what it was before there was music: just a hint of forest
+// An eighth of what it was before there was music: just a hint of forest
 // under the piano. The recording is an 8 bit sample levelled to fill its
 // range, so a low volume here also keeps its grain well below the music.
-constexpr int kAmbienceByPhase[] = { 14, 13, 12, 11, 10, 8 };
+constexpr int kAmbienceByPhase[] = { 7, 7, 6, 5, 5, 4 };
 static_assert(sizeof(kAmbienceByPhase) / sizeof(kAmbienceByPhase[0])
               == static_cast<int>(DayPhase::Count));
 // One step of volume every other frame: the phase change takes about as long
@@ -21,6 +21,14 @@ static_assert(sizeof(kAmbienceByPhase) / sizeof(kAmbienceByPhase[0])
 constexpr int kAmbienceEaseFrames = 2;
 constexpr int kCentre = 128;
 constexpr mm_hword kNormalRate = 1024; // 6.10 fixed point, 1024 = as recorded
+
+// --- Footsteps ---
+constexpr int kStepSounds[] = { SFX_STEP1, SFX_STEP2, SFX_STEP3, SFX_STEP4 };
+
+constexpr int Clamp(int value, int lo, int hi)
+{
+    return value < lo ? lo : (value > hi ? hi : value);
+}
 
 // --- Music ---
 // The soundtrack: 16 bit mono PCM, rate as written by make_music.py. 32768 Hz
@@ -51,6 +59,9 @@ void AudioService::Init()
         Fatal("Soundbank konnte nicht geladen werden.");
 
     mmLoadEffect(SFX_AMB_FOREST);
+    for (int sound : kStepSounds)
+        mmLoadEffect(sound);
+
     ambienceVolume_ = AmbienceVolume();
     mm_sound_effect sound = {};
     sound.id = SFX_AMB_FOREST;
@@ -85,6 +96,23 @@ void AudioService::UpdateAmbience()
 
     ambienceVolume_ += target > ambienceVolume_ ? 1 : -1;
     mmEffectVolume(ambience_, static_cast<mm_word>(ambienceVolume_));
+}
+
+// --- Footsteps --------------------------------------------------------------
+
+void AudioService::PlayStep(bool distant)
+{
+    // Random variant, pitch, volume and panning, so walking never turns into
+    // a machine gun.
+    int volume = distant ? rng_.Range(46, 70) : rng_.Range(118, 162);
+    int pan = distant ? 55 : 28;
+    mm_sound_effect effect = {};
+    effect.id = static_cast<mm_word>(kStepSounds[rng_.Range(0, 3)]);
+    effect.rate = static_cast<mm_hword>(kNormalRate + rng_.Range(-110, 110));
+    effect.volume = static_cast<mm_byte>(volume);
+    effect.panning = static_cast<mm_byte>(Clamp(kCentre + rng_.Range(-pan, pan), 0, 255));
+    // Released right away: these are short, and maxmod may recycle the channel.
+    mmEffectRelease(mmEffectEx(&effect));
 }
 
 // --- Music ------------------------------------------------------------------
