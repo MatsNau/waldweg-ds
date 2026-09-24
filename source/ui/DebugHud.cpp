@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 
+#include "audio/AudioService.h"
 #include "entities/Mats.h"
 #include "entities/Nina.h"
 #include "render/RenderService.h"
@@ -58,6 +59,7 @@ bool DebugHud::Draw(const Nina &nina, const Mats &mats, const Forest &forest,
     text.Format(column, row + 3, "Objekte %d/%d  Pilze %d", forest.LastDrawnProps(),
                 forest.PropCount(), mushrooms.RemainingCount());
     text.Format(column, row + 4, "Nina %s|%s Mats %s", x, z, distance);
-    text.Format(column, row + 5, "%s  Nebel %04X", services_.timeOfDay.PhaseName(), render.FogDepth());
+    text.Format(column, row + 5, "%s Nebel %04X M%d", services_.timeOfDay.PhaseName(), render.FogDepth(),
+                services_.audio.MusicSeconds());
     return true;
 }

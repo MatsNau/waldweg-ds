@@ -442,3 +442,6 @@ FodyWeavers.xsd
 assets/audio/source/*.mp3
 assets/audio/source/*.wav
 assets/audio/source/*.flac
+
+# Soundtrack-Stream (aus assets/audio/source/, nicht weitergeben, siehe make_music.py)
+nitrofiles/music/

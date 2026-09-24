@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3307" height="1370" viewBox="0 0 3307 1370">
+<defs>
+
+</defs>
+<image x="1988" y="0" width="1319" height="1370" preserveAspectRatio="xMidYMid slice" xlink:href="file:///D:/Projekte/Personal/waldweg-ds/assets/cover/build/blender/front.png"/>
+<text x="2671" y="262" font-family="Fredoka" font-weight="bold" text-anchor="middle" font-size="236" fill="#3b2618" opacity="0.45" stroke="#3b2618" stroke-width="28" stroke-linejoin="round">NiKnight</text><text x="2671" y="409.84000000000003" font-family="Fredoka" font-weight="bold" text-anchor="middle" font-size="132" fill="#3b2618" opacity="0.45" stroke="#3b2618" stroke-width="16" stroke-linejoin="round">im Pilzwald</text><text x="2663" y="250" font-family="Fredoka" font-weight="bold" text-anchor="middle" font-size="236" fill="#fff4dc" stroke="#3b2618" stroke-width="26" stroke-linejoin="round" paint-order="stroke">NiKnight</text><text x="2663" y="397.84000000000003" font-family="Fredoka" font-weight="bold" text-anchor="middle" font-size="132" fill="#fff4dc" stroke="#3b2618" stroke-width="15" stroke-linejoin="round" paint-order="stroke">im Pilzwald</text>
+<image x="0" y="0" width="1535" height="870" preserveAspectRatio="xMidYMid slice" xlink:href="file:///D:/Projekte/Personal/waldweg-ds/assets/cover/build/blender/back.png"/>
+<rect x="80" y="156.1" width="1040" height="607.8" rx="26" fill="#3b2618" opacity="0.35"/>
+<rect x="70" y="142.1" width="1040" height="607.8" rx="26" fill="#f2e2bc" stroke="#3b2618" stroke-width="7"/>
+<rect x="88" y="160.1" width="1004" height="571.8" rx="16" fill="none" stroke="#b08a54" stroke-width="3" stroke-dasharray="14 9"/>
+<text x="590.0" y="272.1" font-family="Fredoka" font-weight="bold" font-size="80" text-anchor="middle" fill="#b8401e">NiKnight im Pilzwald</text>
+<text x="140" y="371.7" font-family="Varela Round" font-size="42" fill="#3b2618">Nachdem Nina Mats vor den Geistern</text><text x="140" y="431.4" font-family="Varela Round" font-size="42" fill="#3b2618">gerettet hat, wartet schon das nächste</text><text x="140" y="491" font-family="Varela Round" font-size="42" fill="#3b2618">Abenteuer: den Weg nach Hause finden.</text><text x="140" y="550.6" font-family="Varela Round" font-size="42" fill="#3b2618">Doch das ist schwieriger als gedacht – bald</text><text x="140" y="610.3" font-family="Varela Round" font-size="42" fill="#3b2618">wird es dunkel, und außerdem sprießen</text><text x="140" y="669.9" font-family="Varela Round" font-size="42" fill="#3b2618">überall diese Pilze aus dem Boden …</text>
+<image x="0" y="0" width="3307" height="1370" xlink:href="file:///D:/Projekte/Personal/waldweg-ds/assets/cover/build/template_overlay.png"/>
+</svg>

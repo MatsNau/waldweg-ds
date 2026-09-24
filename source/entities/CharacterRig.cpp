@@ -30,13 +30,6 @@ constexpr s32 kIdleSpeed = 380; // binary angle units per frame
 constexpr Fixed kBlendIn = 0.15_fx;
 constexpr Fixed kBlendOut = 0.1_fx;
 constexpr Fixed kMovingThreshold = 0.004_fx;
-// Below this the legs barely move, so a footstep would not be believable.
-constexpr Fixed kStepAudible = 0.3_fx;
-// The legs cycle fast (a full cycle per 1.1 units, about six footfalls per
-// second at walking speed), which looks right at this size but would sound
-// like a sprint. Every third footfall gets a sound: still exactly in step with
-// the animation, but the calm pace of someone strolling through a forest.
-constexpr int kFootfallsPerSound = 3;
 
 // Polygon IDs inside the character's group (outlines between parts).
 enum Part : u32
@@ -67,20 +60,6 @@ void CharacterRig::Update(Fixed distanceMoved)
     s32 phaseStep = (distanceMoved / kStrideLength).Raw() * Angle::kFullTurn / Fixed::kOne;
     stepPhase_ = stepPhase_ + Angle::FromBinary(phaseStep);
     idlePhase_ = idlePhase_ + Angle::FromBinary(kIdleSpeed);
-
-    // A foot lands where the swing reaches an extreme, a quarter turn either
-    // side of the middle. Shift by a quarter and watch which half we are in.
-    int half = ((stepPhase_.Binary() + Angle::kFullTurn / 4) & (Angle::kFullTurn - 1))
-               / (Angle::kFullTurn / 2);
-    bool footfall = moving && walkBlend_ > kStepAudible && half != stepHalf_;
-    stepHalf_ = half;
-
-    stepTaken_ = false;
-    if (footfall && ++footfalls_ >= kFootfallsPerSound)
-    {
-        footfalls_ = 0;
-        stepTaken_ = true;
-    }
 }
 
 void CharacterRig::SetHandItem(Hand hand, ModelId model)

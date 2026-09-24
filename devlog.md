@@ -616,14 +616,88 @@ Generator – der Ordner ist schon das Ergebnis der ganzen Kette.
 3. Die 6 Blender-Dateien sind nicht committet – ein Klon hätte die Handarbeit
    komplett nicht.
 
+## Tag 11 – Do 24.09.2026: Neuer Rechner, Icon, Cover
+
+**Titel steht:** „**NiKnight im Pilzwald**“ (vom User). Offen sind noch drei Punkte: Hülle, Icon, Soundtrack.
+
+### Neuer Rechner (`D:\Projekte\Personal\waldweg-ds`)
+Hier war nichts eingerichtet. Neu installiert:
+| Was | Wo / Wie |
+|---|---|
+| MSYS2 | `C:\msys64` (per `winget install MSYS2.MSYS2`) |
+| Wonderful + BlocksDS **1.24.0**, Nitro Engine 0.16.0, NFLib 1.1.13 | Bootstrap nach `/opt/wonderful`, `wf-config repo enable blocksds`, `wf-pacman -S blocksds-toolchain blocksds-nitroengine blocksds-nflib` |
+| make, ffmpeg | `pacman -S make mingw-w64-ucrt-x86_64-ffmpeg` |
+| melonDS 1.1 | `C:\Programming\tools\melonDS` (Pfad aus `run.cmd`) |
+| Inkscape 1.4 | war schon da; Cover-Schriften in `%APPDATA%\inkscape\fonts` |
+| Blender | installiert der User selbst (MSI 5.2.2 liegt in Downloads) |
+
+- Smart App Control ist hier **aus** – Build läuft ohne Behelf, 0 Warnungen.
+- **Stolperfalle:** Solange MSYS2 kein eigenes `make` hatte, griff über die geerbte PATH das `make` aus `C:\devkitPro\msys2`. Das löst `/opt/wonderful` in *seinem* Baum auf → „arm-none-eabi-g++: No such file or directory“, obwohl die Datei da ist. Fix: `pacman -S make`.
+- Die Wonderful-Programme brauchen die DLLs aus `/ucrt64/bin` – nur mit `MSYSTEM=UCRT64` (wie in `wf.cmd`) aufrufen.
+
+### Icon + Banner
+- `assets/ui/gen_icon.py` zeichnet einen Fliegenpilz im Gras (32×32, 14 Farben) → `assets/icon.png`; Aufruf in `tools/build_assets.sh`.
+- Makefile: `GAME_TITLE := NiKnight im Pilzwald`, `GAME_ICON := assets/icon.png`, ROM hängt jetzt auch vom Icon ab.
+- **Stolperfalle:** ndstool baut die Icon-Palette selbst neu auf. Eine 4-Bit-BMP mit Magenta auf Index 0 wird **nicht** transparent – Magenta wird eine normale Farbe (Index 14). Deshalb RGBA-PNG mit echtem Alpha.
+- Geprüft: Banner aus dem ROM extrahiert und dekodiert – pixelgleich mit der Quelle, Transparenz stimmt, Titel „NiKnight im Pilzwald | Nina & Mats | WobbleWars 2“.
+
+### Hülle (Vektor-Variante)
+- Vorlage: `assets/cover/template.png` (3307×1370, ~300 dpi). Rückseite 0–1534 × 0–869, Vorderseite ab x ≈ 1988–2019 (geschwungene Kante) bis 3306.
+- `assets/cover/make_overlay.py` stanzt Vorder- und Rückseite aus der Vorlage aus (Kantenpixel werden aus dem Orange zurückgerechnet, kein Orange-Saum); das Innere der „DS GAME MAKER“-Pille wird Pergament. → `assets/cover/build/template_overlay.png`.
+- `assets/cover/gen_cover.py` zeichnet das Bild als SVG und rendert es mit Inkscape → `assets/cover/cover_vector.png`:
+  - Vorne: Titel (Fredoka Bold, Creme mit Tusche-Kontur), Herbstbäume mit Cel-Shading pro Wölbung, Waldsilhouetten, Lichtstrahlen, Weg ins Licht. Nina (Mütze, Brille, liest im Pilzbüchlein) und Mats (Locken, Ringelschal, Korb mit Pilzen, leuchtende Laterne). Fliegenpilze, Steinpilz, Pfifferlinge, und versteckt der leuchtende Kuhpilz.
+  - Hinten: Wald im Hintergrund, Pergament mit Klappentext (Varela Round), Höhe passt sich dem Text an. Text vom User: Anschluss an WobbleWars (Nina hat Mats vor den Geistern gerettet), jetzt den Weg nach Hause finden – keine Features/Tipps.
+  - `--front-art/--back-art` legen stattdessen Bilder (z. B. Blender-Renders) unter Titel/Klappentext.
+- Schriften (OFL) in `assets/cover/fonts/`; Fredoka ist aus der variablen Schrift als feste Bold-Fassung ausgeschnitten (`fontTools.varLib.instancer`, `pip install fonttools`).
+
+### Hülle (Blender-Variante)
+- Blender 5.2 liegt hier unter `D:\Program Files\Blender Foundation\Blender 5.2`; `build_assets.sh` sucht jetzt auf C: und D:.
+- `assets/blender/render_cover.py` baut eine Szene aus den Spielmodellen: Nina & Mats aus `handmade/characters.blend` (montiert wie `CharacterRig::Draw`), Mütze, Schal, Korb (rechte Hand, mit Steinpilz + Pfifferling), Laterne (linke Hand, mit Punktlicht), Nina hält einen Fliegenpilz; Herbstbäume, Tannen, Büsche, Stumpf, Blätter, Detail-Pilze aus dem Buch, leuchtender Kuhpilz. Rendert `front.png` (1320×1370) und `back.png` (1536×870), ~12 s.
+  ```
+  blender --background --factory-startup --python assets/blender/render_cover.py -- assets/cover/build/blender [preview]
+  python assets/cover/gen_cover.py --front-art assets/cover/build/blender/front.png --back-art assets/cover/build/blender/back.png --name cover_blender
+  ```
+- Look: EEVEE, Material = Palette × Toon-Rampe (Diffuse → Shader to RGB → 4 harte Stufen, warme Schatten) als Emission, Dunst über `View Z Depth`; Himmel als Welt-Verlauf (Licht sieht nur ein schwaches Umgebungslicht, `Is Camera Ray`). Freestyle-Tusche (Silhouette, Kontur, Kanten), Dicke/Alpha nach Kameraabstand. Glühendes und Lichter liegen in der Sammlung `OhneLinien`.
+- **Stolperfallen:** Alpha-Modifier „Distance from Camera“ muss `invert = True` haben, sonst sind die Linien *nahe* der Kamera unsichtbar. Glatte Normalen machen Mats' Locken zu Brettern und die Kronen fleckig – Figuren und Welt bleiben facettiert wie im Spiel, nur Pilze und Gegenstände werden geglättet.
+- Ergebnis: `assets/cover/cover_blender.png` neben `assets/cover/cover_vector.png`.
+
+**Entscheidung:** Der User nimmt das **Blender-Cover** (`assets/cover/cover_blender.png`).
+
+### Soundtrack
+- Vom User: C418 – „Minecraft“ (Volume Alpha), 4:14. **Kommerzielle Musik, nur fürs private Geschenk:** MP3 in `assets/audio/source/c418_minecraft.mp3` (ignoriert), Stream in `nitrofiles/music/` (ignoriert).
+- **Warum Streaming:** Selbst 16 Bit mono 22 kHz sind 11 MB – in die Soundbank (lädt Samples in die 4 MB RAM) passt das nicht. `assets/audio/make_music.py` erzeugt `nitrofiles/music/theme.pcm` (roh, 16 Bit LE mono, 22 050 Hz, Stille vorn/hinten weg, linear +6,7 dB auf −1 dBFS Spitze, keine Kompression – das Stück hat LRA 15,5 LU und lebt von den leisen Stellen; 8 Bit würde in jedem Ausklang rauschen).
+- `AudioService` öffnet die Datei per `fopen` und einen maxmod-Stream (`MM_STREAM_16BIT_MONO`, Puffer 16384 Samples ≈ 0,74 s – später 32768 bei 32 kHz, siehe unten, `MM_TIMER0`, **manual**): `mmStreamUpdate()` einmal pro Frame im Hauptloop, damit das `fread` nie im Interrupt läuft und nicht mit anderen NitroFS-Zugriffen kollidiert. Am Ende 12 s Pause, dann von vorn. Lautstärke 88/127, blendet am Start über ~4 s ein. Ohne Datei: keine Musik, kein Fehler.
+- Debug-HUD Zeile 6 zeigt `M<s>` = gespielte Musiksekunden (−1 ohne Musik).
+- ROM jetzt **11,7 MB**.
+- Geprüft: Build ohne Warnungen; melonDS 60/60 fps, HUD zeigte nach ~33 s Laufzeit `M30` → Stream läuft in Echtzeit. **Gehört hat es noch niemand:** Loopback-Aufnahme der Windows-Ausgabe liefert hier nur Stille (auch für einen eigenen Testton) – Klang, Lautstärkeverhältnis zu Ambience/Schritten und Aussetzer beim Blättern muss der User prüfen.
+- melonDS hier: Konfiguration hatte **keine Tasten belegt** (alle `-1`). Vorbelegt: Pfeile, A/B/X/Y = X/Z/S/A, L/R = Q/W, Start = Enter, Select = Backspace.
+
+**User-Test (24.09.) → starkes Grundrauschen, Ton hakt**
+- **Entscheidung des User: nur noch das Klavierstück, keine anderen Geräusche.** Ambience, Schritte und Umblättern sind raus: `audio/` samt WAVs, `gen_sfx.py`, `synth.py`, `make_ambience.py`, die Soundbank (`AUDIODIRS :=`, `mmInitNoSoundbank`), die Aufrufe in `ExploreState`/`IdentifyState` und die Schritt-Erkennung in `CharacterRig` (`StepTaken`, `kFootfallsPerSound`). In der Git-Historie weiterhin da.
+- **Rauschen – vermutete Ursachen:** (1) die 8-Bit-Ambience, voll ausgesteuert, als Dauerteppich; (2) Musik mit 22 050 Hz: der DS mischt mit ~32 kHz und rechnet andere Raten **ohne Interpolation** um → körnig. Musik jetzt mit **32 768 Hz** (ffmpeg soxr-Resampler) → 16,4 MB Stream, ROM **16,3 MB**. `kMusicVolume` 88 → 100, da nichts mehr darunter liegt.
+- **Haken – Ursache melonDS:** Der Emulator lief hier nur mit 53–54/60 fps (JIT aus), dann reißt der Ton ab. melonDS-Konfiguration: **JIT an**, **AudioSync an**, Interpolation kubisch → 60/60 fps. Zusätzlich Stream-Puffer 16384 → **32768 Samples (1 s)**.
+- Build ohne Warnungen, HUD-Wegwerfbuild zeigte `M43` bei laufendem Stream.
+
+**Wunsch des User: Wald-Ambience leise wieder rein**
+- `audio/amb_forest.wav`, `make_ambience.py`, `synth.py` aus Git zurückgeholt; `AUDIODIRS := audio`, `mmInitDefault` mit Soundbank. Schritte und Umblättern bleiben draußen.
+- `kAmbienceByPhase` **28…17** (vorher 56…34, also halb so laut), weiter weich nachgezogen pro Tageszeit.
+- Die Original-Aufnahme `forest_birdsong.mp3` liegt nur auf dem alten Rechner. Es gibt deshalb nur den **8-Bit-Loop** aus dem Repo. Leise ist sein Rauschen mit abgesenkt; bleibt es hörbar, wäre der nächste Schritt eine 16-Bit-Fassung aus der Aufnahme (mmutil kann 16-Bit-Samples, ~0,9 MB RAM bei 16 kHz).
+- Build ohne Warnungen, melonDS 60/60, startet ohne Fehler.
+
+**User-Test:** Ambience noch zu laut → `kAmbienceByPhase` **14…8**. Außerdem „bleibt stehen, sobald das Klavier losgeht“ (keine Framedrops, ein Stillstand). Verdacht: das an diesem Tag eingeschaltete melonDS-**AudioSync** – der Emulator wartet dann auf das Audiogerät (hier ein Headset) und steht, wenn es hängt. Wieder **aus**; JIT allein hält 60/60. Der User testet zusätzlich auf dem Handy.
+
+**Offen**
+1. Test durch User (PC ohne AudioSync + Handy): Bleibt das Spiel noch stehen? Ambience leise genug? Lautstärke (`kMusicVolume`), Pause (`kMusicPauseSamples`). Icon im DS-Menü.
+2. `waldweg.nds` ist im Repo eingecheckt – mit Musik darf es nicht in ein öffentliches Repo.
+
 ## Offene Fragen an den User
-- **Smart App Control (dringend, seit Tag 9):** blockt jetzt `gcc` statt `g++`, der Behelf von Tag 8 greift nicht mehr und es lässt sich **kein ROM mehr bauen**. Abschalten (unumkehrbar), Toolchain neu installieren oder den Linkbefehl im Makefile reparieren?
+- **Smart App Control** (nur alter Rechner; auf dem neuen ist SAC aus): blockt jetzt `gcc` statt `g++`, der Behelf von Tag 8 greift nicht mehr und es lässt sich **kein ROM mehr bauen**. Abschalten (unumkehrbar), Toolchain neu installieren oder den Linkbefehl im Makefile reparieren?
 - **Blender-Add-on installieren** (seit Tag 10): `assets/blender/ds_palette_addon.py` liegt bereit, ist in Blender aber noch nicht installiert – ohne den Reiter **DS** lassen sich keine Farbfelder zuweisen.
 - **Ambience-Fenster** bestätigen: eingebaut ist 08:15,5; Vorhör-Dateien für 04:39,0 und 18:14,5 liegen in `assets/audio/source/`.
 - **Herkunft und Lizenz der Waldaufnahme** (für `assets/audio/source/README.md`).
 - Konsolen-Setup: **Flashcart** (Modell/Konsole noch offen, nicht dringend).
-- Spieltitel, Name der Freundin, Text der Geburtstagsbotschaft (nötig für das Ende, Tag 5).
-- Musikstimmung.
+- ~~Spieltitel~~ (Tag 11: „NiKnight im Pilzwald“). Name der Freundin, Text der Geburtstagsbotschaft (nötig für das Ende, Tag 5).
+- Musik: Datei kommt vom User (Tag 11).
 
 ## Arbeitsregeln (für Claude)
 - Höchstens **ein Agent** gleichzeitig, keine Multi-Agent-Workflows.

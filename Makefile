@@ -12,10 +12,10 @@ ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 # ===========
 
 NAME		:= waldweg
-GAME_TITLE	:= Der Weg aus dem Wald
+GAME_TITLE	:= NiKnight im Pilzwald
 GAME_SUBTITLE	:= Nina & Mats
 GAME_AUTHOR	:= WobbleWars 2
-GAME_ICON	:= $(BLOCKSDS)/sys/icon.gif
+GAME_ICON	:= assets/icon.png
 
 # DLDI and internal SD slot of DSi
 # --------------------------------
@@ -198,7 +198,7 @@ else
     GAME_FULL_TITLE := $(GAME_TITLE);$(GAME_SUBTITLE);$(GAME_AUTHOR)
 endif
 
-$(ROM): $(ELF)
+$(ROM): $(ELF) $(GAME_ICON)
 	@echo "  NDSTOOL $@"
 	$(V)$(BLOCKSDS)/tools/ndstool/ndstool -c $@ \
 		-7 $(BLOCKSDS)/sys/default_arm7/arm7.elf -9 $(ELF) \

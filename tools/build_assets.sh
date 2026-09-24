@@ -1,11 +1,16 @@
 #!/bin/sh
-# Generates models, textures, the font (nitrofiles/) and the sound effects (audio/).
+# Generates models, textures, the font, the music stream (nitrofiles/) and the ambience (audio/).
 # Run inside the Wonderful Toolchain environment:  wf.cmd sh tools/build_assets.sh
 # The ambience additionally needs ffmpeg (FFMPEG=... to point at it).
 set -e
 cd "$(dirname "$0")/.."
 
-BLENDER="${BLENDER:-/c/Program Files/Blender Foundation/Blender 5.2/blender.exe}"
+if [ -z "$BLENDER" ]; then
+    for drive in c d; do
+        BLENDER="/$drive/Program Files/Blender Foundation/Blender 5.2/blender.exe"
+        [ -x "$BLENDER" ] && break
+    done
+fi
 PYTHON="${PYTHON:-python}"
 OBJ2DL="$BLOCKSDSEXT/nitro-engine/tools/obj2dl/obj2dl.py"
 GRIT="$BLOCKSDS/tools/grit/grit"
@@ -112,11 +117,16 @@ fi
 mv "$BUILD/ending"/ending_sky.img "$BUILD/ending"/ending_sky.pal "$BUILD/ending"/ending_sky.map nitrofiles/book/
 cp "$BUILD/ending/ending_chimneys.txt" nitrofiles/book/
 
-echo "== Geraeusche erzeugen (mmutil packt sie beim Build in die Soundbank)"
-"$PYTHON" assets/audio/gen_sfx.py audio
-# Ambience aus der Aufnahme schneiden. Braucht ffmpeg und die Quelldatei; fehlt
-# eines davon, sagt das Skript das und die eingecheckte Fassung bleibt liegen.
+echo "== Wald-Ambience (mmutil packt sie beim Build in die Soundbank)"
+# Braucht ffmpeg und die Aufnahme; fehlt eines davon, bleibt die eingecheckte Fassung liegen.
 FFMPEG="${FFMPEG:-/c/msys64/ucrt64/bin/ffmpeg.exe}" "$PYTHON" assets/audio/make_ambience.py audio
+
+echo "== Musik: Soundtrack als Stream (nitrofiles/music/, nicht im Repo)"
+# Braucht ffmpeg und die MP3; fehlt eines davon, laeuft das Spiel ohne Musik.
+FFMPEG="${FFMPEG:-/c/msys64/ucrt64/bin/ffmpeg.exe}" "$PYTHON" assets/audio/make_music.py
+
+echo "== Icon fuer das DS-Menue (Makefile: GAME_ICON)"
+"$PYTHON" assets/ui/gen_icon.py assets/icon.png
 
 echo "== Schrift mit Umlauten"
 "$PYTHON" assets/fonts/patch_umlauts.py

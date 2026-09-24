@@ -2,7 +2,6 @@
 
 #include <NEMain.h>
 
-#include "audio/AudioService.h"
 #include "core/InputService.h"
 #include "render/RenderService.h"
 #include "world/TimeOfDayService.h"
@@ -88,7 +87,6 @@ void IdentifyState::Update()
 void IdentifyState::TurnPage(int delta)
 {
     book_.Turn(delta);
-    services_.audio.PlayPageTurn();
 }
 
 void IdentifyState::Finish(IdentifySession::Outcome outcome)
