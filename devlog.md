@@ -694,8 +694,13 @@ Hier war nichts eingerichtet. Neu installiert:
 
 - **Umblättern auch wieder rein** (Wunsch des User): `audio/page1–2.wav`, `gen_sfx.py` im Originalzustand (alle sechs WAVs bitgleich nachgeneriert), `AudioService::PlayPageTurn` + gemeinsamer `Play`-Helfer, Aufruf in `IdentifyState::TurnPage`. Damit ist alles wie vor „rework sound“ – plus Musik, Ambience auf 7…4.
 
+### Druckfassung des Covers
+- Standard-Einleger (The Cover Project): 3260 × 1370 px bei 300 dpi = Rückseite 1535 + Rücken 190 + Vorderseite 1535, ca. **276 × 116 mm**; Hülle 136 × 124 × 19 mm. Unsere Vorlage ist 3307 px breit – Höhe und Rückseite stimmen, Rücken + Vorderseite sind 47 px (~4 mm) breiter.
+- `assets/cover/make_print.py` → `assets/cover/cover_blender_druck.pdf`: A4 quer, Einleger exakt 276 × 116 mm mittig, Rückseite unverändert, Rücken + Vorderseite horizontal um 2,7 % gestaucht; Schnittmarken an den Ecken, gestrichelte Falzmarken an beiden Rückenkanten, Druckhinweis. **Mit 100 % drucken**, nicht „an Seite anpassen“.
+- `waldweg.nds` bleibt vorerst im Repo (Entscheidung des User).
+
 **Offen**
-1. Test durch User: Schritte, Umblättern, Ambience-Lautstärke.
+1. Test durch User: Schritte, Umblättern, Ambience-Lautstärke; Probedruck des Covers in der Hülle.
 2. Falls das 8-Bit-Rauschen der Ambience auch leise noch stört: 16-Bit-Fassung aus `forest_birdsong.mp3` (liegt auf dem alten Rechner). Lautstärke (`kMusicVolume`), Pause (`kMusicPauseSamples`). Icon im DS-Menü.
 2. `waldweg.nds` ist im Repo eingecheckt – mit Musik darf es nicht in ein öffentliches Repo.
 
