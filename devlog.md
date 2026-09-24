@@ -51,7 +51,7 @@ Es ist ein Geburtstagsgeschenk. Start war am 14.09.2026, das Ziel ist ein spielb
 | `wf.cmd sh tools/build_assets.sh` | erzeugt Modelle (Blender), konvertiert sie (obj2dl, grit), patcht die Schrift und erzeugt die Geräusche |
 | `blender --background --factory-startup --python assets/blender/make_handmade.py -- characters` | legt `assets/blender/handmade/characters.blend` neu an (**verwirft Handarbeit darin**) |
 | `python assets/audio/make_ambience.py audio` | schneidet nur die Ambience neu (braucht ffmpeg + die Aufnahme) |
-| `wf.cmd make CXX=/opt/wonderful/toolchain/gcc-arm-none-eabi/bin/arm-none-eabi-gcc` | **Behelf**, solange Smart App Control `g++` blockt (siehe oben) |
+| `wsl -d Ubuntu -u root -- sh tools/setup_wsl.sh` | richtet einmalig die Toolchain in WSL ein; `build.cmd` nutzt sie dann automatisch (seit Tag 12, wegen Smart App Control) |
 | `wf.cmd <befehl>` | beliebiger Befehl in der BlocksDS-Umgebung |
 
 ## Projektstruktur (Stand Tag 6)
@@ -704,8 +704,28 @@ Hier war nichts eingerichtet. Neu installiert:
 2. Falls das 8-Bit-Rauschen der Ambience auch leise noch stört: 16-Bit-Fassung aus `forest_birdsong.mp3` (liegt auf dem alten Rechner). Lautstärke (`kMusicVolume`), Pause (`kMusicPauseSamples`). Icon im DS-Menü.
 2. `waldweg.nds` ist im Repo eingecheckt – mit Musik darf es nicht in ein öffentliches Repo.
 
+## Tag 12 – Fr 25.09.2026: Nina führt das Gespräch
+
+**Wunsch des User:** Nina hat den größten Redeanteil. Sie benennt die Pilze, sagt, ob sie gut oder giftig sind, fordert Mats auf, die Gegenstände zu nehmen, und sagt ihm, dass er das Glöckchen läuten soll.
+
+Alle Texte in `StoryDirector.cpp`:
+- **Nina:** Start und Korb-Aufforderung, volle Hände, jede Pilzbestimmung („Ein Steinpilz! Der kommt in den Korb.“ / „Ein Fliegenpilz! Der ist giftig, den lassen wir lieber stehen.“), verwechselte essbare, giftiger Fehler, Schal-, Laternen- und Glöckchen-Aufforderung („Nimm du …“), „Und jetzt läute es, Mats!“, Schrein-Einleitung, Pilz auf dem Altar.
+- **Mats bleibt kurz in seiner Rolle:** „Alles klar!“ (Korb), „Brrr… mir wird kalt.“ (vor der Schal-Aufforderung, passt zum Frier-Porträt), „Ahh, schön warm“, „Mir ist ganz flau im Magen…“ (4. Fehler, Nina antwortet), „Vielleicht finden wir noch, was hierher gehört.“ (Schrein), „Kling… kling…“.
+- Schlussbild (`Ending.h`) und Shroomchens „Muh.“ unverändert.
+- **Texte vom User nachgeschärft:** Start „Oh no... Ich glaube, wir haben uns verlaufen. Aber guck mal, hier wachsen überall Pilze.“ · giftiger Fehler „Oh nein, der ist extrem giftig. Den lege ich wieder zurück.“ · 4. Fehler (Mats) „Mir geht's überhaupt nicht gut...“ · Schal „Hier, nimm deinen Schal aus meinem Rucksack.“ · Nina spricht Mats nirgends mehr mit Namen an.
+- Längste Zeile „Ein Grüner Knollenblätterpilz! Der ist giftig, …“ = 77 Zeichen, passt in Puffer (120) und Box (30 × 5). Pro Ereignis höchstens 2 Nachrichten, Warteschlange (6) unkritisch.
+
+### Build-Fix: Bauen in WSL
+Smart App Control blockiert jetzt auch `arm-none-eabi\bin\as.exe` (CodeIntegrity 3077/3118, 25.09. 00:52) – damit ließ sich keine einzige Datei mehr übersetzen. Welche Datei es trifft, wechselt mit der Cloud-Bewertung (19.09. `g++`, 20.09. `gcc`, jetzt `as`); ein Behelf pro Datei hält also nicht. **Entscheidung des User:** SAC bleibt an, gebaut wird in WSL – Linux-Programme prüft SAC nicht. `C:\Programming\waldweg-ds` ist der **Hauptrechner** des User.
+
+- WSL 2 + Ubuntu 26.04 installiert (`wsl --install -d Ubuntu --no-launch`, Admin, kein Neustart nötig).
+- `tools/setup_wsl.sh` (neu, einmal als root): `make`, Wonderful-Bootstrap nach `/opt/wonderful`, `wf-tools`, Repo `blocksds`, `blocksds-toolchain`/`-nitroengine`/`-nflib` → BlocksDS **1.24.0** (wie auf dem Zweitrechner).
+- `build.cmd` baut in WSL, wenn dort `/opt/wonderful/bin/wf-pacman` existiert, sonst wie bisher über `wf.cmd`. Makefile unverändert (die Standardpfade `/opt/wonderful/...` passen in Linux genauso); `run.cmd` funktioniert damit unverändert.
+- **Stolperfalle:** Die `.d`-Dateien in `build/` enthalten die Pfade der jeweiligen Toolchain (`C:/msys64/...`). Beim Wechsel zwischen Windows- und WSL-Build einmal `build.cmd clean`.
+- Kompletter Build in ~8 s, **0 Warnungen**. melonDS: 60/60 fps, Ninas Korb-Aufforderung erscheint oben.
+- `nitrofiles/music/theme.pcm` liegt auf diesem Rechner nicht (ignoriert, nur auf dem Zweitrechner) → ROM hier 1,2 MB **ohne Musik**. Für die Musik `make_music.py` mit der MP3 laufen lassen oder die Datei vom Zweitrechner kopieren.
+
 ## Offene Fragen an den User
-- **Smart App Control** (nur alter Rechner; auf dem neuen ist SAC aus): blockt jetzt `gcc` statt `g++`, der Behelf von Tag 8 greift nicht mehr und es lässt sich **kein ROM mehr bauen**. Abschalten (unumkehrbar), Toolchain neu installieren oder den Linkbefehl im Makefile reparieren?
 - **Blender-Add-on installieren** (seit Tag 10): `assets/blender/ds_palette_addon.py` liegt bereit, ist in Blender aber noch nicht installiert – ohne den Reiter **DS** lassen sich keine Farbfelder zuweisen.
 - **Ambience-Fenster** bestätigen: eingebaut ist 08:15,5; Vorhör-Dateien für 04:39,0 und 18:14,5 liegen in `assets/audio/source/`.
 - **Herkunft und Lizenz der Waldaufnahme** (für `assets/audio/source/README.md`).

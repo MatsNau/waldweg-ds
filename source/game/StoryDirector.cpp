@@ -45,8 +45,8 @@ void StoryDirector::Start()
     services_.timeOfDay.Reset(DayPhase::Golden);
 
     dialog_.Clear();
-    dialog_.Say(kMats, "Puh, wir haben uns echt verlaufen... Aber schau mal, hier wachsen überall Pilze!");
-    dialog_.Ask(kMats, "Gibst du mir den Korb aus deinem Rucksack? Dann sammeln wir welche.",
+    dialog_.Say(kNina, "Oh no... Ich glaube, wir haben uns verlaufen. Aber guck mal, hier wachsen überall Pilze.");
+    dialog_.Ask(kNina, "Hier, nimm du den Korb aus meinem Rucksack. Dann sammeln wir welche.",
                 DialogTask::GiveBasket);
 }
 
@@ -63,7 +63,7 @@ bool StoryDirector::RequestPick()
     if (progress_.CanCarryMore())
         return true;
 
-    dialog_.Say(kMats, "Deine Hände sind ja schon voll! Gib mir doch erst den Korb.");
+    dialog_.Say(kNina, "Meine Hände sind ja schon voll... Nimm du doch erst mal den Korb.");
     return false;
 }
 
@@ -76,15 +76,15 @@ void StoryDirector::OnIdentified(SpeciesId actual, SpeciesId chosen)
     {
         happyFrames_ = kHappyFrames;
         if (IsPoisonous(actual))
-            snprintf(line, sizeof(line), "%s? Gut erkannt. Den lassen wir lieber stehen.", name);
+            snprintf(line, sizeof(line), "Ein %s! Der ist giftig, den lassen wir lieber stehen.", name);
         else
             snprintf(line, sizeof(line), "Ein %s! Der kommt in den Korb.", name);
-        dialog_.Say(kMats, line);
+        dialog_.Say(kNina, line);
     }
     else if (!IsPoisonous(actual))
     {
         // Mixing up edible mushrooms is harmless: it is simply put aside.
-        dialog_.Say(kMats, "Hm... da bin ich mir nicht so sicher. Den legen wir lieber weg.");
+        dialog_.Say(kNina, "Hm... da bin ich mir doch nicht so sicher. Den lege ich lieber zurück.");
     }
     else
     {
@@ -92,11 +92,12 @@ void StoryDirector::OnIdentified(SpeciesId actual, SpeciesId chosen)
         worriedFrames_ = kWorriedFrames;
         if (progress_.Mistakes() > GameProgress::kFreeMistakes)
         {
-            dialog_.Say(kMats, "Mir ist ganz flau im Magen... Komm, wir fangen nochmal von vorn an.");
+            dialog_.Say(kMats, "Mir geht's überhaupt nicht gut...");
+            dialog_.Say(kNina, "Oh je... Komm, wir fangen nochmal von vorn an.");
             restartRequested_ = true;
             return;
         }
-        dialog_.Say(kMats, "Warte! Der sieht mir gar nicht geheuer aus. Den werfen wir lieber weg.");
+        dialog_.Say(kNina, "Oh nein, der ist extrem giftig. Den lege ich wieder zurück.");
     }
 
     OnMushroomProcessed();
@@ -111,13 +112,14 @@ void StoryDirector::OnMushroomProcessed()
     if (processed == kScarfGate)
     {
         progress_.Unlock(ItemId::Scarf);
-        dialog_.Ask(kMats, "Brrr... die Sonne geht unter, und mir wird kalt. Hast du meinen Schal dabei?",
+        dialog_.Say(kMats, "Brrr... mir wird kalt.");
+        dialog_.Ask(kNina, "Hier, nimm deinen Schal aus meinem Rucksack.",
                     DialogTask::GiveScarf);
     }
     else if (processed == kLanternGate)
     {
         progress_.Unlock(ItemId::Lantern);
-        dialog_.Ask(kMats, "Es wird dunkel. Gib mir die Laterne, dann leuchte ich uns den Weg!",
+        dialog_.Ask(kNina, "Es wird dunkel. Nimm du die Laterne und leuchte uns den Weg!",
                     DialogTask::GiveLantern);
     }
 }
@@ -132,7 +134,8 @@ void StoryDirector::OnItemGiven(ItemId item)
     {
         case ItemId::Basket:
             dialog_.CompleteTask(DialogTask::GiveBasket);
-            dialog_.Say(kMats, "Danke! Ich trage den Korb, und du suchst die Pilze.");
+            dialog_.Say(kNina, "Du trägst den Korb, und ich suche die Pilze.");
+            dialog_.Say(kMats, "Alles klar!");
             break;
         case ItemId::Scarf:
             dialog_.CompleteTask(DialogTask::GiveScarf);
@@ -142,10 +145,11 @@ void StoryDirector::OnItemGiven(ItemId item)
             break;
         case ItemId::Lantern:
             dialog_.CompleteTask(DialogTask::GiveLantern);
-            dialog_.Say(kMats, "So sieht man wieder was. Da hinten glimmt doch etwas...?");
+            dialog_.Say(kNina, "So sieht man wieder was. Da hinten glimmt doch etwas...?");
             break;
         case ItemId::Bell:
             dialog_.CompleteTask(DialogTask::GiveBell);
+            dialog_.Say(kNina, "Und jetzt läute es!");
             dialog_.Say(kMats, "Kling... kling... kling...");
             finaleRequested_ = true;
             break;
@@ -167,8 +171,8 @@ void StoryDirector::OnNearShrine()
         return;
 
     progress_.MarkShrineIntroShown();
-    dialog_.Say(kMats, "Ein alter Schrein, mitten im Wald... Auf dem Stein fehlt irgendwas, oder?");
-    dialog_.Say(kNina, "Vielleicht finden wir noch, was hierher gehört.");
+    dialog_.Say(kNina, "Ein alter Schrein, mitten im Wald... Auf dem Stein fehlt irgendwas, oder?");
+    dialog_.Say(kMats, "Vielleicht finden wir noch, was hierher gehört.");
 }
 
 void StoryDirector::OnOfferingTaken()
@@ -185,8 +189,8 @@ bool StoryDirector::OnShrineTapped()
     progress_.PlaceOffering();
     progress_.Unlock(ItemId::Bell);
     happyFrames_ = kHappyFrames;
-    dialog_.Say(kMats, "Schau, wie er auf dem Stein leuchtet!");
-    dialog_.Ask(kMats, "Hörst du das? Das Glöckchen in deinem Rucksack summt ganz leise. Gib es mir mal!",
+    dialog_.Say(kNina, "Schau, wie er auf dem Stein leuchtet!");
+    dialog_.Ask(kNina, "Hörst du das? Das Glöckchen in meinem Rucksack summt ganz leise. Nimm du es!",
                 DialogTask::GiveBell);
     return true;
 }
