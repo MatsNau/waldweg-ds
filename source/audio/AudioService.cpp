@@ -22,8 +22,9 @@ constexpr int kAmbienceEaseFrames = 2;
 constexpr int kCentre = 128;
 constexpr mm_hword kNormalRate = 1024; // 6.10 fixed point, 1024 = as recorded
 
-// --- Footsteps ---
+// --- One-shots ---
 constexpr int kStepSounds[] = { SFX_STEP1, SFX_STEP2, SFX_STEP3, SFX_STEP4 };
+constexpr int kPageSounds[] = { SFX_PAGE1, SFX_PAGE2 };
 
 constexpr int Clamp(int value, int lo, int hi)
 {
@@ -60,6 +61,8 @@ void AudioService::Init()
 
     mmLoadEffect(SFX_AMB_FOREST);
     for (int sound : kStepSounds)
+        mmLoadEffect(sound);
+    for (int sound : kPageSounds)
         mmLoadEffect(sound);
 
     ambienceVolume_ = AmbienceVolume();
@@ -98,21 +101,31 @@ void AudioService::UpdateAmbience()
     mmEffectVolume(ambience_, static_cast<mm_word>(ambienceVolume_));
 }
 
-// --- Footsteps --------------------------------------------------------------
+// --- One-shots --------------------------------------------------------------
+
+void AudioService::Play(int sound, int volume, int rateJitter, int panSpread)
+{
+    mm_sound_effect effect = {};
+    effect.id = static_cast<mm_word>(sound);
+    effect.rate = static_cast<mm_hword>(kNormalRate + rng_.Range(-rateJitter, rateJitter));
+    effect.volume = static_cast<mm_byte>(Clamp(volume, 0, 255));
+    effect.panning = static_cast<mm_byte>(Clamp(kCentre + rng_.Range(-panSpread, panSpread), 0, 255));
+    // Released right away: these are short, and maxmod may recycle the channel.
+    mmEffectRelease(mmEffectEx(&effect));
+}
 
 void AudioService::PlayStep(bool distant)
 {
-    // Random variant, pitch, volume and panning, so walking never turns into
-    // a machine gun.
     int volume = distant ? rng_.Range(46, 70) : rng_.Range(118, 162);
-    int pan = distant ? 55 : 28;
-    mm_sound_effect effect = {};
-    effect.id = static_cast<mm_word>(kStepSounds[rng_.Range(0, 3)]);
-    effect.rate = static_cast<mm_hword>(kNormalRate + rng_.Range(-110, 110));
-    effect.volume = static_cast<mm_byte>(volume);
-    effect.panning = static_cast<mm_byte>(Clamp(kCentre + rng_.Range(-pan, pan), 0, 255));
-    // Released right away: these are short, and maxmod may recycle the channel.
-    mmEffectRelease(mmEffectEx(&effect));
+    Play(kStepSounds[rng_.Range(0, 3)], volume, 110, distant ? 55 : 28);
+}
+
+void AudioService::PlayPageTurn()
+{
+    // Alternating, so flipping quickly through the book does not repeat one
+    // sound over and over.
+    pageVariant_ ^= 1;
+    Play(kPageSounds[pageVariant_], rng_.Range(150, 185), 70, 24);
 }
 
 // --- Music ------------------------------------------------------------------

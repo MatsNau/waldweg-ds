@@ -1,10 +1,11 @@
-"""Generates the footstep sounds into audio/, where mmutil picks them up.
+"""Generates the short sound effects into audio/, where mmutil picks them up.
 
     python assets/audio/gen_sfx.py [output directory]
 
-These are synthesised (see synth.py) rather than sampled: leaves crackling
-underfoot are noise based, and the pipeline stays self contained. The forest
-ambience is the exception - it comes from a recording, see make_ambience.py.
+These are synthesised (see synth.py) rather than sampled: both are noise based,
+the pipeline stays self contained, and there is no field recording of a page
+being turned in the right room anyway. The forest ambience is the exception -
+it comes from a recording, see make_ambience.py.
 
 Sample names become the SFX_* constants in the generated soundbank.h, so
 `step1.wav` is `SFX_STEP1`.
@@ -48,6 +49,31 @@ def footstep(seed, crackle_freq, thud_freq):
     return synth.fade_edges(out, rate, 0.001, 0.03), rate
 
 
+def page_turn(seed, sweep_top):
+    """Turning a page: the sheet lifting, then settling back down."""
+    rng = random.Random(seed)
+    rate = RATE
+    n = int(0.34 * rate)
+
+    shape = synth.envelope(n, [(0.0, 0.0), (0.03, 1.0), (0.11, 0.35),
+                               (0.17, 0.8), (0.34, 0.0)], rate)
+
+    def density(index):
+        return 120.0 + 1400.0 * shape[index]
+
+    paper = synth.grain_cloud(n, rate, rng, density, burst=(0.0008, 0.0035))
+    # The brightness follows the movement: fastest while the sheet flips over.
+    freqs = [900.0 + sweep_top * value for value in shape]
+    paper = synth.sweep_band(paper, freqs, 1.6, rate)
+    paper = synth.multiply(paper, shape)
+
+    body = synth.lowpass(synth.white(n, rng), 260.0, rate)
+    body = synth.multiply(body, synth.multiply(shape, shape))
+
+    out = synth.mix(synth.scale(paper, 1.0), synth.scale(body, 0.35))
+    return synth.fade_edges(out, rate, 0.002, 0.04), rate
+
+
 def main():
     out_dir = sys.argv[1] if len(sys.argv) > 1 else "audio"
     os.makedirs(out_dir, exist_ok=True)
@@ -58,6 +84,9 @@ def main():
     for i, (crackle, thud) in enumerate(
             [(2600.0, 170.0), (3100.0, 150.0), (2350.0, 195.0), (2900.0, 165.0)], start=1):
         sounds["step%d" % i] = footstep(100 + i, crackle, thud)
+
+    sounds["page1"] = page_turn(211, 3400.0)
+    sounds["page2"] = page_turn(212, 2900.0)
 
     total = 0
     for name in sorted(sounds):

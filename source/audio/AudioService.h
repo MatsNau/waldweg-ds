@@ -10,7 +10,7 @@
 class TimeOfDayService;
 
 // All sound: the piano soundtrack, quietly underneath it the forest, and the
-// footsteps.
+// footsteps and page turns.
 //
 // The soundtrack is far too big for RAM and is streamed from NitroFS (see
 // assets/audio/make_music.py); without the file the game runs without music.
@@ -31,6 +31,7 @@ public:
     // A footstep on the forest floor. Mats walks behind Nina, so his steps
     // are quieter and wander further from the centre.
     void PlayStep(bool distant);
+    void PlayPageTurn();
 
     // Seconds the soundtrack stream has played (pauses included), -1 without music.
     int MusicSeconds() const;
@@ -38,6 +39,9 @@ public:
 private:
     int AmbienceVolume() const;
     void UpdateAmbience();
+    // Plays a one-shot with random pitch, volume and panning, so a sound that
+    // repeats often never turns into a machine gun.
+    void Play(int sound, int volume, int rateJitter, int panSpread);
     void OpenMusic();
     void UpdateMusic();
     // maxmod asks for the next `length` samples of the soundtrack. Called from
@@ -51,6 +55,7 @@ private:
     mm_sfxhand ambience_ = 0;
     int ambienceVolume_ = 0;
     int ambienceEaseFrame_ = 0;
+    int pageVariant_ = 0;
 
     FILE *music_ = nullptr;
     int musicPause_ = 0; // samples of silence left before the next play

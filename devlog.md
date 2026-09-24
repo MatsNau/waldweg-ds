@@ -692,8 +692,10 @@ Hier war nichts eingerichtet. Neu installiert:
 - Soundbank: `SFX_AMB_FOREST`, `SFX_STEP1–4`. Build ohne Warnungen, melonDS startet ohne Fehler.
 - ⚠ Commit `f383f3a` enthält `waldweg.nds` **mit** der Musik (17,6 MB); `origin` ist `github.com/MatsNau/waldweg-ds`.
 
+- **Umblättern auch wieder rein** (Wunsch des User): `audio/page1–2.wav`, `gen_sfx.py` im Originalzustand (alle sechs WAVs bitgleich nachgeneriert), `AudioService::PlayPageTurn` + gemeinsamer `Play`-Helfer, Aufruf in `IdentifyState::TurnPage`. Damit ist alles wie vor „rework sound“ – plus Musik, Ambience auf 7…4.
+
 **Offen**
-1. Test durch User: Schritte, Ambience-Lautstärke.
+1. Test durch User: Schritte, Umblättern, Ambience-Lautstärke.
 2. Falls das 8-Bit-Rauschen der Ambience auch leise noch stört: 16-Bit-Fassung aus `forest_birdsong.mp3` (liegt auf dem alten Rechner). Lautstärke (`kMusicVolume`), Pause (`kMusicPauseSamples`). Icon im DS-Menü.
 2. `waldweg.nds` ist im Repo eingecheckt – mit Musik darf es nicht in ein öffentliches Repo.
 
